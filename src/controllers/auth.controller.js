@@ -2,6 +2,40 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { consultarBd } = require('../config/bd.config');
 
+const registrarUsuario = async (req, res) => {
+  try {
+    const { nombre, correo, contrasena } = req.body;
+
+    if (!nombre || !correo || !contrasena) {
+      return res.status(400).json({
+        mensaje: 'nombre, correo y contrasena son obligatorios.',
+      });
+    }
+
+    const contrasenaHash = await bcrypt.hash(contrasena, 10);
+
+    const consultaRegistrarUsuario = `
+      INSERT INTO usuarios (nombre, correo, contrasena_hash)
+      VALUES ($1, $2, $3)
+      RETURNING id, nombre, correo;
+    `;
+
+    const resultado = await consultarBd(consultaRegistrarUsuario, [nombre, correo, contrasenaHash]);
+
+    return res.status(201).json({
+      mensaje: 'Usuario registrado correctamente.',
+      usuario: resultado.rows[0],
+    });
+  } catch (error) {
+    const esCorreoDuplicado = error.code === '23505';
+
+    return res.status(esCorreoDuplicado ? 409 : 500).json({
+      mensaje: esCorreoDuplicado ? 'El correo ya está registrado.' : 'Error al registrar el usuario.',
+      error: error.message,
+    });
+  }
+};
+
 const iniciarSesion = async (req, res) => {
   try {
     const { correo, contrasena } = req.body;
@@ -70,5 +104,6 @@ const iniciarSesion = async (req, res) => {
 };
 
 module.exports = {
+  registrarUsuario,
   iniciarSesion,
 };

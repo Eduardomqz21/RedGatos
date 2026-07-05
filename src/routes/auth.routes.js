@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const rateLimit = require('express-rate-limit');
-const { iniciarSesion } = require('../controllers/auth.controller');
+const { registrarUsuario, iniciarSesion } = require('../controllers/auth.controller');
 
 const rutasAuth = Router();
 
@@ -15,5 +15,6 @@ const limiteIntentosLogin = rateLimit({
 });
 
 rutasAuth.post('/login', limiteIntentosLogin, iniciarSesion);
+rutasAuth.post('/registro', registrarUsuario);
 
 module.exports = rutasAuth;

@@ -3,14 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RedGatos | Registro y búsqueda de mascotas</title>
+  <title>PetMap | Registro y búsqueda de mascotas</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     :root {
       --fondo: #f8f4ee;
       --superficie: #ffffff;
-      --superficie-suave: #fffaf3;
       --texto: #3f4a56;
       --texto-suave: #6d7885;
       --borde: #e7ddd2;
@@ -26,26 +25,14 @@
         radial-gradient(circle at top right, rgba(149, 189, 230, 0.18), transparent 22%),
         var(--fondo);
       color: var(--texto);
-    }
-
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: system-ui, -apple-system, sans-serif;
     }
 
     .navbar {
-      background: rgba(255, 255, 255, 0.88);
-      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid rgba(231, 221, 210, 0.9);
-      box-shadow: 0 6px 18px rgba(100, 92, 81, 0.04);
-    }
-
-    .brand-mark {
-      width: 0.9rem;
-      height: 0.9rem;
-      border-radius: 999px;
-      background: linear-gradient(135deg, var(--acento), var(--acento-azul));
-      display: inline-block;
-      margin-right: 0.6rem;
+      box-shadow: 0 4px 20px rgba(100, 92, 81, 0.05);
     }
 
     .tarjeta-suave {
@@ -53,10 +40,6 @@
       border: 1px solid var(--borde);
       border-radius: 1.35rem;
       box-shadow: var(--sombra);
-    }
-
-    .tarjeta-suave.sobre-fondo {
-      background: linear-gradient(180deg, #fffdfa, #fff);
     }
 
     .titulo-principal {
@@ -67,9 +50,7 @@
       color: #33404d;
     }
 
-    .texto-secundario {
-      color: var(--texto-suave);
-    }
+    .texto-secundario { color: var(--texto-suave); }
 
     .boton-fino {
       border-radius: 999px;
@@ -77,8 +58,12 @@
       background: linear-gradient(180deg, #f7fffd, #eefaf8);
       color: #355d57;
       font-weight: 700;
-      padding: 0.95rem 1.25rem;
-      box-shadow: 0 10px 20px rgba(142, 201, 193, 0.12);
+      padding: 0.75rem 1.25rem;
+    }
+
+    .boton-fino:hover {
+      border-color: rgba(94, 167, 160, 0.42);
+      background: linear-gradient(180deg, #f3fffd, #e8f7f5);
     }
 
     .boton-acento {
@@ -87,8 +72,14 @@
       border: 0;
       color: #fff;
       font-weight: 800;
-      padding: 0.95rem 1.4rem;
-      box-shadow: 0 12px 30px rgba(94, 167, 160, 0.22);
+      padding: 0.75rem 1.4rem;
+      box-shadow: 0 8px 20px rgba(94, 167, 160, 0.25);
+      transition: filter 0.2s;
+    }
+
+    .boton-acento:hover {
+      color: #fff;
+      filter: brightness(0.95);
     }
 
     .pestana-vista {
@@ -96,68 +87,48 @@
       background: #fff;
       color: #56616d;
       border-radius: 999px;
-      padding: 0.85rem 1.1rem;
-      font-weight: 700;
+      padding: 0.6rem 1.1rem;
+      font-weight: 600;
+      transition: all 0.2s;
     }
 
-    .pestana-vista.activa {
+    .pestana-vista.activa, .pestana-vista:hover {
       background: #eef8f6;
       color: #315a55;
       border-color: rgba(94, 167, 160, 0.28);
     }
 
-    .form-label {
-      font-weight: 700;
-      color: #47525f;
-    }
-
-    .form-control,
-    .form-select {
+    .form-control, .form-select {
       border-radius: 0.95rem;
       border-color: var(--borde);
-      background: #fff;
-      color: var(--texto);
+      padding: 0.75rem 1rem;
     }
 
-    .estado-vista {
-      display: none;
+    .form-control:focus, .form-select:focus {
+      border-color: var(--acento);
+      box-shadow: 0 0 0 0.2rem rgba(142, 201, 193, 0.15);
     }
 
+    .estado-vista { display: none; }
     .estado-vista.activa {
       display: block;
-      animation: aparecer 180ms ease-out;
+      animation: aparecer 250ms ease-out;
     }
 
     @keyframes aparecer {
-      from { opacity: 0; transform: translateY(6px); }
+      from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    #mapa-busqueda,
-    #mapa-registro {
+    #mapa-busqueda, #mapa-registro {
       width: 100%;
-      min-height: 60vh;
-      border-radius: 1.15rem;
+      min-height: 65vh;
+      border-radius: 1rem;
       border: 1px solid var(--borde);
-      overflow: hidden;
-      background: #f4f7f9;
+      z-index: 1;
     }
 
-    #mapa-registro {
-      min-height: 320px;
-    }
-
-    .contenedor-mapa {
-      padding: 0.8rem;
-      background: linear-gradient(180deg, #fff, #fffaf6);
-      border: 1px solid var(--borde);
-      border-radius: 1.35rem;
-    }
-
-    .muestra-coordenadas {
-      font-size: 0.95rem;
-      color: var(--texto-suave);
-    }
+    #mapa-registro { min-height: 350px; }
 
     .mini-etiqueta {
       display: inline-flex;
@@ -166,220 +137,196 @@
       border-radius: 999px;
       background: #f2faf8;
       color: #40706a;
-      padding: 0.42rem 0.8rem;
+      padding: 0.4rem 0.8rem;
       font-weight: 700;
+      font-size: 0.85rem;
       border: 1px solid rgba(94, 167, 160, 0.16);
     }
 
     .resultado-card {
       cursor: pointer;
-      transition: transform 120ms ease, box-shadow 120ms ease;
+      transition: transform 0.2s;
     }
-
-    .resultado-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 12px 24px rgba(100, 92, 81, 0.08);
-    }
-
-    .qr-perfil-img {
-      width: min(100%, 420px);
-      aspect-ratio: 1;
-      object-fit: contain;
-      border-radius: 1.15rem;
-      border: 1px solid var(--borde);
-      background: #fff;
-    }
+    .resultado-card:hover { transform: translateY(-3px); }
+    .qr-perfil-img { max-width: 300px; border-radius: 1rem; }
   </style>
 </head>
 <body>
   <nav class="navbar sticky-top navbar-expand-lg">
-    <div class="container-fluid px-3 px-lg-4 py-2 d-flex gap-3 align-items-center">
-      <a class="navbar-brand fw-bold text-decoration-none text-reset" href="#vista-inicio">
-        <span class="brand-mark"></span>RedGatos
-      </a>
-      <a id="btnNavLogin" href="#" data-vista="login" class="text-muted text-decoration-none" title="Panel administrativo" aria-label="Ir al panel administrativo">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M8 1a3 3 0 0 0-3 3v2H4.5A1.5 1.5 0 0 0 3 7.5v5A1.5 1.5 0 0 0 4.5 14h7a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 11.5 6H11V4a3 3 0 0 0-3-3Zm-2 5V4a2 2 0 1 1 4 0v2H6Z"/>
+    <div class="container-fluid px-3 px-lg-4 py-1">
+      <a class="navbar-brand fw-bold text-decoration-none text-reset d-flex align-items-center fs-4" href="#" data-vista="inicio">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="me-2" style="color: var(--acento);">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
         </svg>
+        PetMap
       </a>
-      <button type="button" id="btnNavAdmin" data-vista="admin" class="btn pestana-vista text-muted d-none">Panel Admin</button>
-      <div class="ms-auto d-flex flex-wrap gap-2">
-        <button type="button" class="btn pestana-vista" data-vista="inicio">Inicio</button>
-        <button type="button" class="btn pestana-vista" data-vista="registro">Registrar Mascota</button>
-        <button type="button" class="btn pestana-vista" data-vista="busqueda">Buscar Perdidas</button>
-        <button type="button" class="btn pestana-vista" data-vista="buscar-lista">Buscar por Nombre</button>
-        <button type="button" class="btn pestana-vista text-muted" data-vista="login">Iniciar Sesión</button>
+
+      <button class="navbar-toggler border-0 shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0 gap-2 mt-3 mt-lg-0">
+          <li class="nav-item">
+            <button type="button" class="btn pestana-vista w-100" data-vista="registro">Registrar Mascota</button>
+          </li>
+          <li class="nav-item">
+            <button type="button" class="btn pestana-vista w-100" data-vista="busqueda">Mapa de Reportes</button>
+          </li>
+          <li class="nav-item">
+            <button type="button" class="btn pestana-vista w-100" data-vista="buscar-lista">Buscar por Nombre</button>
+          </li>
+        </ul>
+
+        <div class="ms-auto d-flex align-items-center mt-3 mt-lg-0 pt-3 pt-lg-0 border-top border-lg-0 gap-2">
+          <button type="button" id="btnNavLogin" class="btn boton-acento w-100 w-lg-auto" data-vista="login">Iniciar Sesión</button>
+
+          <div class="dropdown w-100 w-lg-auto d-none" id="menuUsuarioLogueado">
+            <button class="btn boton-fino dropdown-toggle w-100 d-flex align-items-center justify-content-center gap-2" type="button" data-bs-toggle="dropdown">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/>
+                <path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8zm8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1z"/>
+              </svg>
+              <span id="textoNombreUsuario">Mi Cuenta</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2 border-0 tarjeta-suave">
+              <li><button type="button" class="dropdown-item py-2 fw-semibold" data-vista="mis-mascotas">Mis Mascotas</button></li>
+              <li><button type="button" class="dropdown-item py-2 fw-semibold d-none text-primary" id="itemMenuAdmin" data-vista="admin">Panel Admin</button></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><button type="button" class="dropdown-item py-2 text-danger fw-semibold" id="btnCerrarSesionGlobal">Cerrar Sesión</button></li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   </nav>
 
   <main class="container-fluid px-3 px-lg-4 py-4 py-lg-5">
     <section id="vista-inicio" class="estado-vista activa">
-      <div class="row g-4 align-items-center">
-        <div class="col-12 col-xl-7">
-          <div class="tarjeta-suave sobre-fondo p-4 p-md-5">
-            <div class="mini-etiqueta mb-3">Fundación y atención comunitaria</div>
-            <h1 class="titulo-principal mb-3">Cuidar a una mascota perdida debe sentirse claro, rápido y humano.</h1>
-            <p class="texto-secundario fs-5 mb-4">
-              RedGatos conecta registros, ubicación geográfica, búsqueda por nombre y recuperación de perfiles con una experiencia simple y profesional.
-            </p>
-            <div class="d-flex flex-column flex-sm-row gap-3">
-              <button type="button" class="btn boton-acento btn-lg" data-vista="registro">Registrar Mascota</button>
-              <button type="button" class="btn boton-fino btn-lg" data-vista="busqueda">Buscar Mascotas Perdidas</button>
-              <button type="button" class="btn boton-fino btn-lg" data-vista="buscar-lista">Buscar por Nombre</button>
-            </div>
-          </div>
-        </div>
-        <div class="col-12 col-xl-5">
-          <div class="tarjeta-suave p-4 p-md-4 h-100">
-            <h2 class="h4 fw-bold mb-3">Nuestra misión</h2>
-            <p class="texto-secundario mb-3">
-              Ayudar a familias, veterinarias y refugios a publicar y localizar mascotas con información confiable y geolocalización asistida.
-            </p>
-            <ul class="texto-secundario mb-0 ps-3">
-              <li>Registro guiado con mapa interactivo.</li>
-              <li>Consulta visual de mascotas perdidas.</li>
-              <li>Búsqueda por nombre con verificación telefónica.</li>
-            </ul>
+      <div class="row g-4 align-items-center justify-content-center">
+        <div class="col-12 col-xl-8 text-center">
+          <div class="mini-etiqueta mb-3">Tu comunidad de apoyo local</div>
+          <h1 class="titulo-principal mb-4">Ayudando a las mascotas a volver a casa.</h1>
+          <p class="texto-secundario fs-5 mb-5 mx-auto" style="max-width: 600px;">
+            PetMap centraliza registros, ubicaciones en tiempo real y perfiles QR para conectar mascotas perdidas con sus familias de forma rápida y segura.
+          </p>
+          <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+            <button type="button" class="btn boton-acento btn-lg" data-vista="registro">Reportar un animal</button>
+            <button type="button" class="btn boton-fino btn-lg" data-vista="busqueda">Ver mapa de reportes</button>
           </div>
         </div>
       </div>
     </section>
 
     <section id="vista-registro" class="estado-vista">
-      <div class="d-flex flex-wrap gap-2 mb-3">
-        <button type="button" class="btn pestana-vista activa" data-vista="registro">Registrar Mascota</button>
-        <button type="button" class="btn pestana-vista" data-vista="busqueda">Buscar Mascotas Perdidas</button>
-        <button type="button" class="btn pestana-vista" data-vista="buscar-lista">Buscar por Nombre</button>
-        <button type="button" class="btn pestana-vista" data-vista="inicio">Volver al inicio</button>
-      </div>
-
       <div class="row g-4 align-items-start">
         <div class="col-12 col-xl-5">
-          <div class="tarjeta-suave p-4 p-md-4">
-            <h2 class="h4 fw-bold mb-2">Registro de mascota</h2>
-            <p class="texto-secundario mb-4">Selecciona la ubicación directamente en el mapa. Las coordenadas se guardan automáticamente.</p>
+          <div class="tarjeta-suave p-4 p-md-5">
+            <h2 class="h3 fw-bold mb-2">Registrar mascota</h2>
+            <p class="texto-secundario mb-4">Toca el mapa a la derecha para establecer la ubicación. Los datos de contacto son privados si no está perdida.</p>
 
             <form id="formularioMascota" novalidate>
               <div class="mb-3">
-                <label for="nombre" class="form-label">Nombre</label>
-                <input type="text" class="form-control" id="nombre" name="nombre" placeholder="Luna" required />
+                <label class="form-label">Nombre</label>
+                <input type="text" class="form-control" name="nombre" placeholder="Ej. Firulais" required />
               </div>
 
               <div class="row g-3">
-                <div class="col-12 col-md-6">
-                  <label for="especie" class="form-label">Especie</label>
-                  <input type="text" class="form-control" id="especie" name="especie" placeholder="Perro, gato..." required />
+                <div class="col-6">
+                  <label class="form-label">Especie</label>
+                  <input type="text" class="form-control" name="especie" placeholder="Perro, Gato..." required />
                 </div>
-                <div class="col-12 col-md-6">
-                  <label for="raza" class="form-label">Raza</label>
-                  <input type="text" class="form-control" id="raza" name="raza" placeholder="Labrador" />
+                <div class="col-6">
+                  <label class="form-label">Raza</label>
+                  <input type="text" class="form-control" name="raza" />
                 </div>
               </div>
 
               <div class="mt-3 mb-3">
-                <label for="descripcion" class="form-label">Descripción</label>
-                <textarea class="form-control" id="descripcion" name="descripcion" rows="3" placeholder="Color, señas particulares, comportamiento..."></textarea>
+                <label class="form-label">Descripción</label>
+                <textarea class="form-control" name="descripcion" rows="3" placeholder="Señas particulares..."></textarea>
               </div>
 
-              <div class="row g-3">
-                <div class="col-12">
-                  <label for="telefono_dueno" class="form-label">Teléfono</label>
-                  <div class="input-group">
-                    <select id="lada" name="lada" class="form-select" style="max-width: 140px;">
-                      <option value="+52" selected>México (+52)</option>
-                      <option value="+1">Estados Unidos / Canadá (+1)</option>
-                      <option value="+34">España (+34)</option>
-                      <option value="+57">Colombia (+57)</option>
-                      <option value="+54">Argentina (+54)</option>
-                      <option value="+56">Chile (+56)</option>
-                    </select>
-                    <input type="tel" class="form-control" id="telefono_dueno" name="telefono_dueno" placeholder="3312345678" />
-                  </div>
+              <div class="mb-3">
+                <label class="form-label">Foto de la mascota</label>
+                <input type="file" class="form-control" name="foto" accept="image/*" />
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Teléfono de contacto</label>
+                <div class="input-group">
+                  <select name="lada" class="form-select" style="max-width: 120px;">
+                    <option value="+52" selected>🇲🇽 +52</option>
+                    <option value="+1">🇺🇸 +1</option>
+                    <option value="+34">🇪🇸 +34</option>
+                    <option value="+57">🇨🇴 +57</option>
+                    <option value="+54">🇦🇷 +54</option>
+                    <option value="+56">🇨🇱 +56</option>
+                  </select>
+                  <input type="tel" class="form-control" name="telefono_dueno" placeholder="3312345678" />
                 </div>
-                <div class="col-12">
-                  <label for="direccion_dueno" class="form-label">Dirección</label>
-                  <input type="text" class="form-control" id="direccion_dueno" name="direccion_dueno" placeholder="Colonia, calle y número" />
-                </div>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Dirección / Colonia</label>
+                <input type="text" class="form-control" name="direccion_dueno" />
               </div>
 
               <input type="hidden" id="latitud" name="latitud" />
               <input type="hidden" id="longitud" name="longitud" />
 
-              <div class="mt-4 mb-2">
-                <div class="d-flex justify-content-between align-items-center gap-3 mb-2">
-                  <label class="form-label mb-0">Selecciona la ubicación</label>
-                  <span id="coordenadasSeleccionadas" class="muestra-coordenadas">Sin coordenadas seleccionadas</span>
-                </div>
-                <div class="contenedor-mapa">
-                  <div id="mapa-registro" aria-label="Mapa para seleccionar coordenadas"></div>
-                </div>
+              <div class="mt-4 mb-3 d-xl-none">
+                <label class="form-label">Ubicación</label>
+                <div id="mapa-registro-movil" style="height: 250px; border-radius: 1rem; border: 1px solid var(--borde);"></div>
+                <div class="mt-1 small text-muted text-center" id="coordenadasSeleccionadas">Sin seleccionar</div>
               </div>
 
               <div class="form-check form-switch my-4">
-                <input class="form-check-input" type="checkbox" role="switch" id="esta_perdida" name="esta_perdida" />
-                <label class="form-check-label fw-semibold" for="esta_perdida">Esta perdida</label>
+                <input class="form-check-input fs-4" type="checkbox" role="switch" id="esta_perdida" name="esta_perdida" />
+                <label class="form-check-label fw-bold mt-1 ms-2" for="esta_perdida">¡Esta mascota está perdida!</label>
               </div>
 
-              <button type="submit" class="btn boton-acento w-100 py-3">Registrar mascota</button>
+              <button type="submit" class="btn boton-acento w-100 py-3 fs-5">Guardar Mascota</button>
             </form>
           </div>
         </div>
 
-        <div class="col-12 col-xl-7">
-          <div class="tarjeta-suave p-3 p-md-4 h-100">
-            <h2 class="h4 fw-bold mb-2">Vista previa del registro</h2>
-            <p class="texto-secundario mb-3">El mapa te ayuda a colocar con precisión la ubicación aproximada del reporte.</p>
-            <div id="mapa-registro"></div>
+        <div class="col-12 col-xl-7 d-none d-xl-block">
+          <div class="tarjeta-suave p-3 h-100 d-flex flex-column">
+            <h3 class="h5 fw-bold ms-2 mt-2">Ubica en el mapa</h3>
+            <p class="text-muted small ms-2 mb-3">Haz clic en la zona aproximada para registrar las coordenadas.</p>
+            <div id="mapa-registro" class="flex-grow-1"></div>
           </div>
         </div>
       </div>
     </section>
 
     <section id="vista-busqueda" class="estado-vista">
-      <div class="d-flex flex-wrap gap-2 mb-3">
-        <button type="button" class="btn pestana-vista" data-vista="registro">Registrar Mascota</button>
-        <button type="button" class="btn pestana-vista activa" data-vista="busqueda">Buscar Mascotas Perdidas</button>
-        <button type="button" class="btn pestana-vista" data-vista="buscar-lista">Buscar por Nombre</button>
-        <button type="button" class="btn pestana-vista" data-vista="inicio">Volver al inicio</button>
-      </div>
-
       <div class="tarjeta-suave p-3 p-md-4">
-        <div class="mb-3">
-          <h2 class="h4 fw-bold mb-2">Mapa general de mascotas perdidas</h2>
-          <p class="texto-secundario mb-0">Consulta los puntos reportados y abre cada marcador para ver datos de contacto disponibles.</p>
-        </div>
+        <h2 class="h3 fw-bold mb-1">Mapa de Alertas</h2>
+        <p class="texto-secundario mb-3">Mascotas reportadas como perdidas actualmente en tu región.</p>
         <div id="mapa-busqueda"></div>
       </div>
     </section>
 
     <section id="vista-buscar-lista" class="estado-vista">
-      <div class="d-flex flex-wrap gap-2 mb-3">
-        <button type="button" class="btn pestana-vista" data-vista="registro">Registrar Mascota</button>
-        <button type="button" class="btn pestana-vista" data-vista="busqueda">Buscar Mascotas Perdidas</button>
-        <button type="button" class="btn pestana-vista activa" data-vista="buscar-lista">Buscar por Nombre</button>
-        <button type="button" class="btn pestana-vista" data-vista="inicio">Volver al inicio</button>
-      </div>
-
       <div class="row g-4">
         <div class="col-12 col-lg-4">
           <div class="tarjeta-suave p-4">
             <h2 class="h4 fw-bold mb-2">Buscar por nombre</h2>
-            <p class="texto-secundario mb-3">Escribe un nombre parcial o completo para encontrar mascotas registradas.</p>
+            <p class="texto-secundario mb-3">Escribe el nombre para encontrar la ficha de la mascota.</p>
             <form id="formularioBusquedaNombre" class="d-grid gap-3">
-              <div>
-                <label for="busquedaNombre" class="form-label">Nombre</label>
-                <input type="search" class="form-control" id="busquedaNombre" name="busquedaNombre" placeholder="Luna" />
-              </div>
-              <button type="submit" class="btn boton-acento">Buscar</button>
+              <input type="search" class="form-control form-control-lg" id="busquedaNombre" placeholder="Ej. Firulais" />
+              <button type="submit" class="btn boton-acento py-2">Buscar</button>
             </form>
           </div>
         </div>
         <div class="col-12 col-lg-8">
-          <div class="tarjeta-suave p-4">
-            <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
-              <h2 class="h4 fw-bold mb-0">Resultados</h2>
-              <span class="texto-secundario" id="totalResultadosBusqueda">0 resultados</span>
+          <div class="tarjeta-suave p-4 min-vh-50">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h2 class="h5 fw-bold mb-0">Resultados</h2>
+              <span class="mini-etiqueta" id="totalResultadosBusqueda">0</span>
             </div>
             <div id="contenedorResultadosBusqueda" class="row g-3"></div>
           </div>
@@ -388,45 +335,72 @@
     </section>
 
     <section id="vista-login" class="estado-vista">
-      <div class="row justify-content-center">
-        <div class="col-12 col-md-8 col-lg-6 col-xl-5">
+      <div class="row justify-content-center mt-md-5">
+        <div class="col-12 col-md-6 col-lg-5">
+          <div class="tarjeta-suave p-4 p-md-5 text-center">
+            <div class="brand-mark mb-3" style="width: 3rem; height: 3rem;"></div>
+            <h2 class="h3 fw-bold mb-4">Bienvenido a PetMap</h2>
+            <form id="formularioLogin" class="text-start d-grid gap-3">
+              <div>
+                <label class="form-label">Correo electrónico</label>
+                <input type="email" class="form-control" name="correo" required />
+              </div>
+              <div>
+                <label class="form-label">Contraseña</label>
+                <input type="password" class="form-control" name="contrasena" required />
+              </div>
+              <button type="submit" class="btn boton-acento py-3 mt-2">Iniciar Sesión</button>
+            </form>
+            <div class="mt-4">
+              <a href="#" class="text-decoration-none fw-semibold text-muted" data-vista="registro-usuario">¿No tienes cuenta? Regístrate aquí</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="vista-registro-usuario" class="estado-vista">
+      <div class="row justify-content-center mt-md-5">
+        <div class="col-12 col-md-6 col-lg-5">
           <div class="tarjeta-suave p-4 p-md-5">
-            <h2 class="h3 fw-bold mb-2">Iniciar sesión</h2>
-            <p class="texto-secundario mb-4">Accede al panel de administración con credenciales válidas.</p>
-            <form id="formularioLogin" class="d-grid gap-3">
+            <h2 class="h3 fw-bold mb-4 text-center">Crear cuenta</h2>
+            <form id="formularioRegistroUsuario" class="d-grid gap-3">
               <div>
-                <label for="correo" class="form-label">Correo</label>
-                <input type="email" class="form-control" id="correo" name="correo" placeholder="admin@redgatos.com" required />
+                <label class="form-label">Tu Nombre</label>
+                <input type="text" class="form-control" name="nombre" required />
               </div>
               <div>
-                <label for="contrasena" class="form-label">Contraseña</label>
-                <input type="password" class="form-control" id="contrasena" name="contrasena" placeholder="••••••••" required />
+                <label class="form-label">Correo electrónico</label>
+                <input type="email" class="form-control" name="correo" required />
               </div>
-              <button type="submit" class="btn boton-acento py-3">Ingresar</button>
+              <div>
+                <label class="form-label">Contraseña Segura</label>
+                <input type="password" class="form-control" name="contrasena" required />
+              </div>
+              <button type="submit" class="btn boton-acento py-3 mt-2">Registrarme</button>
             </form>
           </div>
         </div>
       </div>
     </section>
 
+    <section id="vista-mis-mascotas" class="estado-vista">
+      <h2 class="h3 fw-bold mb-4">Mis Mascotas</h2>
+      <div id="contenedorMisMascotas" class="row g-4"></div>
+    </section>
+
     <section id="vista-admin" class="estado-vista">
-      <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
-        <div>
-          <h2 class="h3 fw-bold mb-1">Panel de Administración</h2>
-          <p class="texto-secundario mb-0">Gestiona mascotas registradas y elimina registros con autorización JWT.</p>
-        </div>
-        <button type="button" id="btnCerrarSesion" class="btn btn-danger fw-bold">Cerrar Sesión</button>
-      </div>
-      <div class="tarjeta-suave p-3 p-md-4">
+      <h2 class="h3 fw-bold mb-4 text-danger"><i class="bi bi-shield-lock me-2"></i>Centro de Comando (Admin)</h2>
+      <div class="tarjeta-suave p-0 overflow-hidden">
         <div class="table-responsive">
-          <table class="table align-middle mb-0">
-            <thead>
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
               <tr>
-                <th>Nombre</th>
+                <th class="ps-4">Mascota</th>
                 <th>Especie</th>
                 <th>Estado</th>
-                <th>Teléfono</th>
-                <th>Acciones</th>
+                <th>Contacto</th>
+                <th class="text-end pe-4">Borrar</th>
               </tr>
             </thead>
             <tbody id="tablaAdminMascotas"></tbody>
@@ -435,30 +409,106 @@
       </div>
     </section>
 
-    <section id="vista-perfil" class="estado-vista">
-      <div class="d-flex flex-wrap gap-2 mb-3">
-        <button type="button" class="btn pestana-vista" data-vista="registro">Registrar Mascota</button>
-        <button type="button" class="btn pestana-vista" data-vista="busqueda">Buscar Mascotas Perdidas</button>
-        <button type="button" class="btn pestana-vista" data-vista="buscar-lista">Buscar por Nombre</button>
-        <button type="button" class="btn pestana-vista" data-vista="inicio">Volver al inicio</button>
-      </div>
-
-      <div class="tarjeta-suave p-4 p-md-5">
-        <div class="row g-4 align-items-center">
-          <div class="col-12 col-lg-6">
-            <span id="estadoMascotaPerfil" class="mini-etiqueta mb-3">Perfil de mascota</span>
-            <h2 id="nombreMascotaPerfil" class="titulo-principal mb-3">Nombre</h2>
-            <p id="descripcionMascotaPerfil" class="texto-secundario fs-5 mb-4">Descripción</p>
-            <div class="d-flex flex-wrap gap-3">
-              <button type="button" id="btnCambiarEstadoMascota" class="btn btn-warning fw-bold px-4 py-3">Cambiar estado (Perdida/Encontrada)</button>
+    <section id="vista-registro-exitoso" class="estado-vista">
+      <div class="row justify-content-center">
+        <div class="col-12 col-lg-8 col-xl-7">
+          <div class="tarjeta-suave p-4 p-md-5 text-center">
+            <div class="mini-etiqueta mb-3">Registro completado</div>
+            <h2 class="titulo-principal mb-3">¡Mascota Registrada!</h2>
+            <img id="fotoMascotaRegistroExitoso" class="img-fluid rounded-4 mb-3 d-none mx-auto" alt="Foto de la mascota registrada" style="max-width: 320px;" />
+            <h3 id="nombreMascotaRegistroExitoso" class="h3 fw-bold mb-3">Nombre</h3>
+            <img id="qrMascotaRegistroExitoso" class="qr-perfil-img img-fluid mx-auto" alt="QR de la mascota" />
+            <div class="mt-4">
+              <button type="button" id="btnIrPerfilMascotaRegistroExitoso" class="btn boton-acento px-4 py-3">Ir a Mi Mascota</button>
             </div>
-          </div>
-          <div class="col-12 col-lg-6 text-center">
-            <img id="qr-perfil-img" class="qr-perfil-img img-fluid shadow-sm" alt="Código QR del perfil de la mascota" />
           </div>
         </div>
       </div>
     </section>
+
+    <section id="vista-perfil-publico" class="estado-vista">
+      <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+          <div class="tarjeta-suave p-4 p-md-5 text-center">
+            <div id="alertaMascotaPerdidaPublico" class="alert alert-danger fw-bold fs-4 d-none mb-4">¡ESTA MASCOTA ESTÁ PERDIDA!</div>
+            <img id="fotoMascotaPublico" class="img-fluid rounded-4 mb-3 d-none mx-auto" alt="Foto de la mascota" style="max-width: 420px;" />
+            <h2 id="nombreMascotaPublico" class="titulo-principal mb-3">Nombre</h2>
+            <p id="descripcionMascotaPublico" class="texto-secundario fs-5 mb-4">Descripción</p>
+            <button type="button" id="btnContactarDuenoPublico" class="btn btn-danger fw-bold px-4 py-3 d-none">Contactar al dueño</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="vista-perfil-privado" class="estado-vista">
+      <div class="row justify-content-center">
+        <div class="col-12 col-lg-9">
+          <div class="tarjeta-suave p-4 p-md-5">
+            <div class="d-flex flex-column flex-lg-row gap-4 align-items-lg-center">
+              <div class="flex-shrink-0 text-center">
+                <img id="fotoMascotaPrivado" class="img-fluid rounded-4 mb-3 d-none" alt="Foto de la mascota" style="max-width: 320px;" />
+              </div>
+              <div class="flex-grow-1">
+                <span id="estadoMascotaPrivado" class="mini-etiqueta mb-3 fs-6"></span>
+                <h2 id="nombreMascotaPrivado" class="titulo-principal mb-3">Nombre</h2>
+                <p id="descripcionMascotaPrivado" class="texto-secundario fs-5 mb-4">Descripción</p>
+                <div class="row g-3 mb-4">
+                  <div class="col-12 col-md-6">
+                    <div class="tarjeta-suave p-3 h-100">
+                      <div class="fw-bold mb-1">Teléfono</div>
+                      <div id="telefonoMascotaPrivado" class="texto-secundario"></div>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="tarjeta-suave p-3 h-100">
+                      <div class="fw-bold mb-1">Dirección</div>
+                      <div id="direccionMascotaPrivado" class="texto-secundario"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="d-flex flex-column flex-sm-row gap-3">
+                  <button type="button" id="btnGenerarCartelBusqueda" class="btn boton-fino px-4 py-3">Generar Cartel de Búsqueda (Imprimir)</button>
+                  <button type="button" id="btnCambiarEstadoMascota" class="btn btn-warning fw-bold px-4 py-3 rounded-pill">Cambiar Estado (Perdida/Encontrada)</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="vista-boletin-contacto" class="estado-vista">
+      <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+          <div class="tarjeta-suave p-4 p-md-5">
+            <div class="mini-etiqueta mb-3">Datos de contacto</div>
+            <h2 id="nombreMascotaBoletin" class="titulo-principal mb-3">Nombre</h2>
+            <div class="row g-4 align-items-center">
+              <div class="col-12 col-lg-5 text-center">
+                <img id="fotoMascotaBoletin" class="img-fluid rounded-4 d-none mx-auto" alt="Foto de la mascota" style="max-width: 320px;" />
+              </div>
+              <div class="col-12 col-lg-7">
+                <p id="descripcionMascotaBoletin" class="texto-secundario fs-5 mb-4">Descripción</p>
+                <div class="tarjeta-suave p-4 border border-danger bg-white text-start">
+                  <div class="fw-bold text-danger mb-2">Datos de contacto</div>
+                  <div class="mb-2"><span class="fw-bold">Teléfono:</span> <span id="telefonoMascotaBoletin"></span></div>
+                  <div><span class="fw-bold">Dirección:</span> <span id="direccionMascotaBoletin"></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="cartel-impresion" class="d-none d-print-block">
+      <div class="text-center p-5" style="border: 4px solid #000; min-height: 100vh;">
+        <div class="fw-bold" style="font-size: 3.2rem; letter-spacing: 0.12em;">SE BUSCA</div>
+        <img id="cartelFotoMascota" src="" alt="Foto de la mascota" style="max-width: 360px; width: 100%; height: auto; object-fit: cover; margin: 1.5rem auto; display: block; border-radius: 1rem;" />
+        <h1 id="cartelNombreMascota" class="fw-bold" style="font-size: 2.6rem; margin-bottom: 1rem;">Nombre</h1>
+        <div class="fs-3 fw-semibold">Teléfono: <span id="cartelTelefonoMascota"></span></div>
+      </div>
+    </div>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

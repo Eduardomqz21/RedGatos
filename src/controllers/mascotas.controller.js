@@ -1,5 +1,26 @@
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 const { consultarBd } = require('../config/bd.config');
-const { generarQrMascota } = require('../utils/qr.util');
+const { asegurarDirectorioMascota } = require('../utils/archivos.util');
+const { construirUrlFrontend, generarQrMascota } = require('../utils/qr.util');
+
+const storageFotosMascotas = multer.diskStorage({
+  destination: (req, _file, cb) => {
+    try {
+      const directorio = asegurarDirectorioMascota(req.body.nombre);
+      cb(null, directorio);
+    } catch (error) {
+      cb(error);
+    }
+  },
+  filename: (_req, file, cb) => {
+    const nombreSeguro = String(file.originalname || 'foto').replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, `${Date.now()}-${nombreSeguro}`);
+  },
+});
+
+const uploadMascotaFoto = multer({ storage: storageFotosMascotas });
 
 const convertirBooleano = (valor) => {
   if (typeof valor === 'boolean') {
@@ -11,12 +32,6 @@ const convertirBooleano = (valor) => {
   }
 
   return Boolean(valor);
-};
-
-const construirUrlPerfilMascota = (req, idMascota) => {
-  const protocolo = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host = req.get('host');
-  return `${protocolo}://${host}/mascotas/${idMascota}`;
 };
 
 const enmascararTelefono = (telefono) => {
@@ -49,6 +64,7 @@ const obtenerMascotaPorId = async (idMascota) => {
       direccion_dueno,
       esta_perdida,
       idioma_registro,
+      foto_url,
       latitud,
       longitud,
       ST_AsGeoJSON(ubicacion)::json AS ubicacion,
@@ -71,8 +87,31 @@ const limpiarMascotaParaRespuesta = (mascota) => {
   return mascota;
 };
 
+const obtenerPerfilPublico = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const mascota = await obtenerMascotaPorId(id);
+
+    if (!mascota) {
+      return res.status(404).json({
+        mensaje: 'No se encontró la mascota solicitada.',
+      });
+    }
+
+    return res.status(200).json({
+      mascota: limpiarMascotaParaRespuesta(mascota),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      mensaje: 'Error al obtener el perfil público de la mascota.',
+      error: error.message,
+    });
+  }
+};
+
 const registrarMascota = async (req, res) => {
   try {
+    const idUsuario = req.usuario?.id;
     const {
       nombre,
       especie,
@@ -85,6 +124,12 @@ const registrarMascota = async (req, res) => {
       longitud,
       idioma_registro,
     } = req.body;
+
+    if (!idUsuario) {
+      return res.status(401).json({
+        mensaje: 'No autorizado. Token faltante o inválido.',
+      });
+    }
 
     if (!nombre || !especie || latitud === undefined || longitud === undefined) {
       return res.status(400).json({
@@ -101,8 +146,13 @@ const registrarMascota = async (req, res) => {
       });
     }
 
+    const fotoUrl = req.file
+      ? `/uploads/${path.basename(path.dirname(req.file.path))}/${req.file.filename}`
+      : null;
+
     const consultaInsertarMascota = `
       INSERT INTO mascotas (
+        id_usuario,
         nombre,
         especie,
         raza,
@@ -113,7 +163,8 @@ const registrarMascota = async (req, res) => {
         idioma_registro,
         latitud,
         longitud,
-        ubicacion
+        ubicacion,
+        foto_url
       )
       VALUES (
         $1,
@@ -126,10 +177,13 @@ const registrarMascota = async (req, res) => {
         $8,
         $9,
         $10,
-        ST_SetSRID(ST_MakePoint($10, $9), 4326)
+        $11,
+        ST_SetSRID(ST_MakePoint($11, $10), 4326),
+        $12
       )
       RETURNING
         id,
+        id_usuario,
         nombre,
         especie,
         raza,
@@ -138,6 +192,7 @@ const registrarMascota = async (req, res) => {
         direccion_dueno,
         esta_perdida,
         idioma_registro,
+        foto_url,
         latitud,
         longitud,
         ST_AsGeoJSON(ubicacion)::json AS ubicacion,
@@ -145,6 +200,7 @@ const registrarMascota = async (req, res) => {
     `;
 
     const valoresMascota = [
+      idUsuario,
       nombre,
       especie,
       raza || null,
@@ -155,11 +211,12 @@ const registrarMascota = async (req, res) => {
       idioma_registro || null,
       latitudNumerica,
       longitudNumerica,
+      fotoUrl,
     ];
 
     const resultado = await consultarBd(consultaInsertarMascota, valoresMascota);
     const mascotaRegistrada = resultado.rows[0];
-    const urlPerfilMascota = construirUrlPerfilMascota(req, mascotaRegistrada.id);
+    const urlPerfilMascota = construirUrlFrontend(req, mascotaRegistrada.id);
     const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);
 
     return res.status(201).json({
@@ -167,6 +224,7 @@ const registrarMascota = async (req, res) => {
       mascota: mascotaRegistrada,
       url_perfil: urlPerfilMascota,
       qr_perfil: qrPerfilMascota,
+      foto_url: fotoUrl,
     });
   } catch (error) {
     // ESTA LÍNEA ES LA CLAVE PARA DEBUGGEAR
@@ -191,6 +249,7 @@ const obtenerMascotasPerdidas = async (_req, res) => {
         telefono_dueno,
         direccion_dueno,
         esta_perdida,
+        foto_url,
         latitud,
         longitud,
         ST_AsGeoJSON(ubicacion)::json AS ubicacion,
@@ -215,6 +274,52 @@ const obtenerMascotasPerdidas = async (_req, res) => {
   }
 };
 
+const obtenerMisMascotas = async (req, res) => {
+  try {
+    const idUsuario = req.usuario?.id;
+
+    if (!idUsuario) {
+      return res.status(401).json({
+        mensaje: 'No autorizado. Token faltante o inválido.',
+      });
+    }
+
+    const consultaObtenerMisMascotas = `
+      SELECT
+        id,
+        id_usuario,
+        nombre,
+        especie,
+        raza,
+        descripcion,
+        telefono_dueno,
+        direccion_dueno,
+        esta_perdida,
+        idioma_registro,
+        foto_url,
+        latitud,
+        longitud,
+        ST_AsGeoJSON(ubicacion)::json AS ubicacion,
+        creado_en
+      FROM mascotas
+      WHERE id_usuario = $1
+      ORDER BY creado_en DESC;
+    `;
+
+    const resultado = await consultarBd(consultaObtenerMisMascotas, [idUsuario]);
+
+    return res.status(200).json({
+      total: resultado.rows.length,
+      mascotas: resultado.rows,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      mensaje: 'Error al obtener tus mascotas.',
+      error: error.message,
+    });
+  }
+};
+
 const buscarMascotasPorNombre = async (req, res) => {
   try {
     const textoBusqueda = String(req.query.q || '').trim();
@@ -227,8 +332,11 @@ const buscarMascotasPorNombre = async (req, res) => {
               nombre,
               especie,
               raza,
+              descripcion,
               telefono_dueno,
+              direccion_dueno,
               esta_perdida,
+              foto_url,
               creado_en
             FROM mascotas
             WHERE nombre ILIKE $1
@@ -243,8 +351,11 @@ const buscarMascotasPorNombre = async (req, res) => {
               nombre,
               especie,
               raza,
+              descripcion,
               telefono_dueno,
+              direccion_dueno,
               esta_perdida,
+              foto_url,
               creado_en
             FROM mascotas
             ORDER BY creado_en DESC;
@@ -253,10 +364,7 @@ const buscarMascotasPorNombre = async (req, res) => {
         };
 
     const resultado = await consultarBd(consultaBuscarMascotas.sql, consultaBuscarMascotas.valores);
-    const mascotas = resultado.rows.map((mascota) => ({
-      ...mascota,
-      telefono_dueno: enmascararTelefono(mascota.telefono_dueno),
-    }));
+    const mascotas = resultado.rows.map((mascota) => limpiarMascotaParaRespuesta(mascota));
 
     return res.status(200).json({
       total: mascotas.length,
@@ -300,7 +408,7 @@ const verificarAccesoMascota = async (req, res) => {
 
     return res.status(200).json({
       mensaje: 'Acceso verificado correctamente.',
-      mascota,
+      mascota: limpiarMascotaParaRespuesta(mascota),
       url_perfil: urlPerfilMascota,
       qr_perfil: qrPerfilMascota,
     });
@@ -353,6 +461,7 @@ const cambiarEstadoMascota = async (req, res) => {
         direccion_dueno,
         esta_perdida,
         idioma_registro,
+        foto_url,
         latitud,
         longitud,
         ST_AsGeoJSON(ubicacion)::json AS ubicacion,
@@ -361,12 +470,12 @@ const cambiarEstadoMascota = async (req, res) => {
 
     const resultado = await consultarBd(consultaActualizarEstado, [nuevoEstado, id]);
     const mascotaActualizada = resultado.rows[0];
-    const urlPerfilMascota = construirUrlPerfilMascota(req, mascotaActualizada.id);
+    const urlPerfilMascota = construirUrlFrontend(req, mascotaActualizada.id);
     const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);
 
     return res.status(200).json({
       mensaje: 'Estado de la mascota actualizado correctamente.',
-      mascota: mascotaActualizada,
+      mascota: limpiarMascotaParaRespuesta(mascotaActualizada),
       url_perfil: urlPerfilMascota,
       qr_perfil: qrPerfilMascota,
     });
@@ -410,9 +519,12 @@ const borrarMascota = async (req, res) => {
 };
 
 module.exports = {
+  uploadMascotaFoto,
   registrarMascota,
   obtenerMascotasPerdidas,
+  obtenerMisMascotas,
   buscarMascotasPorNombre,
+  obtenerPerfilPublico,
   verificarAccesoMascota,
   cambiarEstadoMascota,
   borrarMascota,

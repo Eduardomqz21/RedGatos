@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const rutasMascotas = require('./src/routes/mascotas.routes');
@@ -12,6 +13,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
+app.use('/uploads', express.static(path.resolve('D:/PetMap')));
 
 app.use('/api/mascotas', rutasMascotas);
 app.use('/api/auth', rutasAuth);
