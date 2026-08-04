@@ -47,12 +47,17 @@ npm start
 
 - `GET /salud`
 - `POST /api/auth/login`
+- `POST /api/auth/registro`
 - `POST /api/mascotas`
 - `GET /api/mascotas/perdidas`
 - `GET /api/mascotas/buscar`
 - `POST /api/mascotas/:id/verificar`
 - `PUT /api/mascotas/:id/estado`
 - `DELETE /api/mascotas/:id` (protegida con JWT)
+- `GET /api/usuarios` (admin)
+- `POST /api/usuarios` (admin)
+- `PUT /api/usuarios/:id` (admin)
+- `DELETE /api/usuarios/:id` (admin)
 
 ## Nota
 

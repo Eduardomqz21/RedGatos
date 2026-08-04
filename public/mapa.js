@@ -1,127 +1,236 @@
 document.addEventListener('DOMContentLoaded', () => {
-  if (typeof L === 'undefined') {
-    return;
-  }
+  if (typeof L === 'undefined') return;
 
   const estadoMapas = {
     mapaRegistro: null,
     mapaBusqueda: null,
+    mapaEstado: null,
     marcadorRegistro: null,
+    circuloRegistro: null,
+    marcadorEstado: null,
+    circuloEstado: null,
     marcadoresBusqueda: [],
   };
 
-  const crearIconoPersonalizado = (esSeleccion) => L.divIcon({
+  const IconoBase = L.divIcon({
     className: '',
-    html: `<div style="width:18px;height:18px;border-radius:999px;background:${esSeleccion ? '#8ec9c1' : '#95bde6'};border:3px solid #fff;box-shadow:0 8px 16px rgba(0,0,0,0.14);"></div>`,
-    iconSize: [18, 18],
-    iconAnchor: [9, 9],
+    html: `<div style="width:20px;height:20px;border-radius:50%;background:#8ec9c1;border:3px solid white;box-shadow:0 4px 8px rgba(0,0,0,0.2);"></div>`,
+    iconSize: [20, 20], iconAnchor: [10, 10]
   });
 
-  const escaparHtml = (texto) => String(texto)
+  const IconoPerdida = L.divIcon({
+    className: '',
+    html: `<div style="width:20px;height:20px;border-radius:50%;background:#e69595;border:3px solid white;box-shadow:0 4px 8px rgba(0,0,0,0.2); animation: pulse 1.5s infinite;"></div>`,
+    iconSize: [20, 20], iconAnchor: [10, 10]
+  });
+
+  const escaparHtml = (texto) => String(texto || '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 
-  const limpiarMarcadoresBusqueda = () => {
-    estadoMapas.marcadoresBusqueda.forEach((marcador) => marcador.remove());
-    estadoMapas.marcadoresBusqueda = [];
-  };
+  const style = document.createElement('style');
+  style.innerHTML = `@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }`;
+  document.head.appendChild(style);
 
-  const construirPopup = (mascota) => {
-    const telefono = mascota.telefono_dueno ? `<div><strong>Teléfono:</strong> ${escaparHtml(mascota.telefono_dueno)}</div>` : '';
-    const direccion = mascota.direccion_dueno ? `<div><strong>Dirección:</strong> ${escaparHtml(mascota.direccion_dueno)}</div>` : '';
+  const mapRegEl = document.getElementById('mapa-registro');
+  const mapBusqEl = document.getElementById('mapa-busqueda');
+  const mapEstadoEl = document.getElementById('mapa-estado');
+  
+  if (mapRegEl) {
+    estadoMapas.mapaRegistro = L.map('mapa-registro', { zoomControl: false }).setView([20.29, -103.18], 12);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(estadoMapas.mapaRegistro);
+    L.control.zoom({ position: 'bottomright' }).addTo(estadoMapas.mapaRegistro);
 
-    return `
-      <div style="min-width:180px">
-        <h6 class="mb-1">${escaparHtml(mascota.nombre || 'Sin nombre')}</h6>
-        <div><strong>Especie:</strong> ${escaparHtml(mascota.especie || 'Sin especie')}</div>
-        ${telefono}
-        ${direccion}
-      </div>
-    `;
-  };
+    estadoMapas.mapaRegistro.locate({ setView: true, maxZoom: 14 });
 
-  const mapaRegistro = L.map('mapa-registro', { zoomControl: true }).setView([20.29, -103.18], 12);
-  const mapaBusqueda = L.map('mapa-busqueda', { zoomControl: true }).setView([20.29, -103.18], 12);
+    estadoMapas.mapaRegistro.on('click', (e) => {
+      if (estadoMapas.marcadorRegistro) estadoMapas.marcadorRegistro.remove();
+      if (estadoMapas.circuloRegistro) estadoMapas.circuloRegistro.remove();
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-  }).addTo(mapaRegistro);
+      estadoMapas.marcadorRegistro = L.marker(e.latlng, { icon: IconoBase, draggable: true }).addTo(estadoMapas.mapaRegistro);
+      estadoMapas.circuloRegistro = L.circle(e.latlng, {
+        radius: 500,
+        color: '#8ec9c1',
+        fillColor: '#8ec9c1',
+        fillOpacity: 0.3,
+        weight: 2,
+      }).addTo(estadoMapas.mapaRegistro);
+      window.petmapUI?.establecerCoordenadas(e.latlng.lat, e.latlng.lng);
+      
+      estadoMapas.marcadorRegistro.on('drag', (ev) => {
+        estadoMapas.circuloRegistro?.setLatLng(ev.target.getLatLng());
+      });
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-  }).addTo(mapaBusqueda);
+      estadoMapas.marcadorRegistro.on('dragend', (ev) => {
+        window.petmapUI?.establecerCoordenadas(ev.target.getLatLng().lat, ev.target.getLatLng().lng);
+      });
+    });
+  }
 
-  mapaRegistro.on('click', (evento) => {
-    const { lat, lng } = evento.latlng;
+  if (mapBusqEl) {
+    estadoMapas.mapaBusqueda = L.map('mapa-busqueda', { zoomControl: false }).setView([20.29, -103.18], 12);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(estadoMapas.mapaBusqueda);
+    L.control.zoom({ position: 'bottomright' }).addTo(estadoMapas.mapaBusqueda);
+    estadoMapas.mapaBusqueda.locate({ setView: true, maxZoom: 14 });
+  }
 
+  const limpiarMapaRegistro = () => {
     if (estadoMapas.marcadorRegistro) {
       estadoMapas.marcadorRegistro.remove();
+      estadoMapas.marcadorRegistro = null;
     }
 
-    estadoMapas.marcadorRegistro = L.marker([lat, lng], {
-      icon: crearIconoPersonalizado(true),
-      draggable: true,
-    }).addTo(mapaRegistro);
+    if (estadoMapas.circuloRegistro) {
+      estadoMapas.circuloRegistro.remove();
+      estadoMapas.circuloRegistro = null;
+    }
 
-    estadoMapas.marcadorRegistro.on('dragend', (arrastre) => {
-      const posicion = arrastre.target.getLatLng();
-      window.redgatosUI?.establecerCoordenadas(posicion.lat, posicion.lng);
-    });
+    const inputLatitud = document.getElementById('latitud');
+    const inputLongitud = document.getElementById('longitud');
+    const etiqueta = document.getElementById('coordenadasSeleccionadas');
 
-    window.redgatosUI?.establecerCoordenadas(lat, lng);
-  });
+    if (inputLatitud) inputLatitud.value = '';
+    if (inputLongitud) inputLongitud.value = '';
+    if (etiqueta) etiqueta.textContent = 'Sin seleccionar';
+  };
 
-  const cargarMascotasPerdidas = async () => {
-    try {
-      limpiarMarcadoresBusqueda();
-      const respuesta = await fetch('/api/mascotas/perdidas');
-      const datos = await respuesta.json();
+  const limpiarMapaEstado = () => {
+    if (estadoMapas.marcadorEstado) {
+      estadoMapas.marcadorEstado.remove();
+      estadoMapas.marcadorEstado = null;
+    }
 
-      if (!respuesta.ok) {
-        throw new Error(datos.mensaje || 'No fue posible cargar las mascotas perdidas.');
-      }
+    if (estadoMapas.circuloEstado) {
+      estadoMapas.circuloEstado.remove();
+      estadoMapas.circuloEstado = null;
+    }
 
-      const mascotas = Array.isArray(datos.mascotas) ? datos.mascotas : [];
+    const inputLatitud = document.getElementById('latitudEstado');
+    const inputLongitud = document.getElementById('longitudEstado');
 
-      mascotas.forEach((mascota) => {
-        const latitud = Number(mascota.latitud);
-        const longitud = Number(mascota.longitud);
+    if (inputLatitud) inputLatitud.value = '';
+    if (inputLongitud) inputLongitud.value = '';
+  };
 
-        if (Number.isNaN(latitud) || Number.isNaN(longitud)) {
-          return;
+  const inicializarMapaEstado = () => {
+    if (!mapEstadoEl) {
+      return;
+    }
+
+    if (!estadoMapas.mapaEstado) {
+      estadoMapas.mapaEstado = L.map('mapa-estado', { zoomControl: false }).setView([20.29, -103.18], 12);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(estadoMapas.mapaEstado);
+      L.control.zoom({ position: 'bottomright' }).addTo(estadoMapas.mapaEstado);
+      estadoMapas.mapaEstado.locate({ setView: true, maxZoom: 14 });
+
+      estadoMapas.mapaEstado.on('click', (e) => {
+        if (estadoMapas.marcadorEstado) {
+          estadoMapas.marcadorEstado.remove();
         }
 
-        const marcador = L.marker([latitud, longitud], {
-          icon: crearIconoPersonalizado(false),
-        }).addTo(mapaBusqueda).bindPopup(construirPopup(mascota));
+        if (estadoMapas.circuloEstado) {
+          estadoMapas.circuloEstado.remove();
+        }
 
-        estadoMapas.marcadoresBusqueda.push(marcador);
+        estadoMapas.marcadorEstado = L.marker(e.latlng, { icon: IconoPerdida, draggable: true }).addTo(estadoMapas.mapaEstado);
+        estadoMapas.circuloEstado = L.circle(e.latlng, {
+          radius: 500,
+          color: '#e69595',
+          fillColor: '#e69595',
+          fillOpacity: 0.3,
+          weight: 2,
+        }).addTo(estadoMapas.mapaEstado);
+
+        const inputLatitud = document.getElementById('latitudEstado');
+        const inputLongitud = document.getElementById('longitudEstado');
+
+        if (inputLatitud) inputLatitud.value = String(e.latlng.lat);
+        if (inputLongitud) inputLongitud.value = String(e.latlng.lng);
+
+        estadoMapas.marcadorEstado.on('dragend', (ev) => {
+          const posicion = ev.target.getLatLng();
+          estadoMapas.circuloEstado?.setLatLng(posicion);
+          if (inputLatitud) inputLatitud.value = String(posicion.lat);
+          if (inputLongitud) inputLongitud.value = String(posicion.lng);
+        });
       });
-    } catch (error) {
-      // La vista sigue operativa aunque falle la carga inicial.
-      // eslint-disable-next-line no-console
-      console.error(error);
+    } else {
+      estadoMapas.mapaEstado.invalidateSize();
     }
   };
 
-  const redimensionarMapaRegistro = () => {
-    setTimeout(() => mapaRegistro.invalidateSize(), 80);
+  const redimensionarMapaRegistro = () => estadoMapas.mapaRegistro?.invalidateSize();
+  const redimensionarMapaBusqueda = () => estadoMapas.mapaBusqueda?.invalidateSize();
+
+  const cargarMascotasPerdidas = async () => {
+    if (!estadoMapas.mapaBusqueda) return;
+    
+    estadoMapas.marcadoresBusqueda.forEach((m) => m.remove());
+    estadoMapas.marcadoresBusqueda = [];
+
+    try {
+      const resp = await fetch('/api/mascotas/perdidas');
+      if (!resp.ok) return;
+      const datos = await resp.json();
+
+      const gruposMascotas = {};
+
+      (datos.mascotas || []).forEach((m) => {
+        if (m.latitud == null || m.longitud == null) return;
+        const claveZona = `${Number(m.latitud).toFixed(4)},${Number(m.longitud).toFixed(4)}`;
+        if (!gruposMascotas[claveZona]) gruposMascotas[claveZona] = [];
+        gruposMascotas[claveZona].push(m);
+      });
+
+      Object.values(gruposMascotas).forEach((grupo) => {
+        const lat = grupo[0].latitud;
+        const lng = grupo[0].longitud;
+
+        let htmlPopup = `<div style="min-width:180px; max-height:280px; overflow-y:auto; overflow-x:hidden;">`;
+        if (grupo.length > 1) {
+          htmlPopup += `<div class="alert alert-danger p-2 text-center small mb-3"><strong>¡${grupo.length} mascotas perdidas en esta zona!</strong></div>`;
+        }
+
+        grupo.forEach((m) => {
+          const mascotaSerializada = encodeURIComponent(JSON.stringify(m));
+          htmlPopup += `
+            <div class="mb-3 ${grupo.length > 1 ? 'border-bottom pb-3' : ''}">
+              ${m.foto_url ? `<img src="${escaparHtml(m.foto_url)}" alt="${escaparHtml(m.nombre)}" style="width:100%;height:110px;object-fit:cover;border-radius:12px;margin-bottom:10px;" />` : ''}
+              <h6 class="mb-1">${escaparHtml(m.nombre)}</h6>
+              <p class="small mb-2">${escaparHtml(m.especie)}</p>
+              <button type="button" class="btn btn-sm boton-acento w-100" onclick="window.abrirPerfilPublico(decodeURIComponent('${mascotaSerializada}'))">Ayudar</button>
+            </div>
+          `;
+        });
+
+        htmlPopup += `</div>`;
+
+        const zonaBusqueda = L.circle([lat, lng], {
+          color: '#e69595',
+          fillColor: '#e69595',
+          fillOpacity: 0.4,
+          radius: 500,
+          weight: 2,
+        })
+          .addTo(estadoMapas.mapaBusqueda)
+          .bindPopup(htmlPopup);
+
+        estadoMapas.marcadoresBusqueda.push(zonaBusqueda);
+      });
+    } catch (e) { console.error('Error cargando mapa:', e); }
   };
 
-  const redimensionarMapaBusqueda = () => {
-    setTimeout(() => mapaBusqueda.invalidateSize(), 80);
-  };
-
-  window.redgatosMapas = {
-    mapaRegistro,
-    mapaBusqueda,
-    cargarMascotasPerdidas,
+  window.petmapMapas = {
     redimensionarMapaRegistro,
     redimensionarMapaBusqueda,
+    inicializarMapaEstado,
+    limpiarMapaRegistro,
+    limpiarMapaEstado,
+    cargarMascotasPerdidas,
   };
 
-  cargarMascotasPerdidas();
+  setTimeout(cargarMascotasPerdidas, 500);
 });

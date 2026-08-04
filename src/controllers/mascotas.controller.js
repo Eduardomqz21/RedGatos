@@ -1,5 +1,42 @@
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 const { consultarBd } = require('../config/bd.config');
-const { generarQrMascota } = require('../utils/qr.util');
+const { asegurarDirectorioMascota } = require('../utils/archivos.util');
+const { construirUrlFrontend, generarQrMascota } = require('../utils/qr.util');
+
+const storageFotosMascotas = multer.diskStorage({
+  destination: (req, _file, cb) => {
+    try {
+      const directorio = asegurarDirectorioMascota(req.body.nombre);
+      cb(null, directorio);
+    } catch (error) {
+      cb(error);
+    }
+  },
+  filename: (_req, file, cb) => {
+    const nombreSeguro = String(file.originalname || 'foto').replace(/[^a-zA-Z0-9._-]/g, '_');
+    cb(null, `${Date.now()}-${nombreSeguro}`);
+  },
+});
+
+const uploadMascotaFoto = multer({
+  storage: storageFotosMascotas,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    const tiposPermitidos = /jpeg|jpg|png|webp/;
+    const extensionValida = tiposPermitidos.test(path.extname(file.originalname).toLowerCase());
+    const mimetypeValido = tiposPermitidos.test(file.mimetype);
+
+    if (extensionValida && mimetypeValido) {
+      return cb(null, true);
+    }
+
+    cb(new Error('TIPO_ARCHIVO_INVALIDO'));
+  },
+});
 
 const convertirBooleano = (valor) => {
   if (typeof valor === 'boolean') {
@@ -13,10 +50,13 @@ const convertirBooleano = (valor) => {
   return Boolean(valor);
 };
 
-const construirUrlPerfilMascota = (req, idMascota) => {
-  const protocolo = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host = req.get('host');
-  return `${protocolo}://${host}/mascotas/${idMascota}`;
+const obtenerNumeroNullable = (valor) => {
+  if (valor === '' || valor == null) {
+    return null;
+  }
+
+  const numero = Number(valor);
+  return Number.isNaN(numero) ? null : numero;
 };
 
 const enmascararTelefono = (telefono) => {
@@ -47,8 +87,10 @@ const obtenerMascotaPorId = async (idMascota) => {
       descripcion,
       telefono_dueno,
       direccion_dueno,
+      fecha_nacimiento,
       esta_perdida,
       idioma_registro,
+      foto_url,
       latitud,
       longitud,
       ST_AsGeoJSON(ubicacion)::json AS ubicacion,
@@ -71,8 +113,31 @@ const limpiarMascotaParaRespuesta = (mascota) => {
   return mascota;
 };
 
+const obtenerPerfilPublico = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const mascota = await obtenerMascotaPorId(id);
+
+    if (!mascota) {
+      return res.status(404).json({
+        mensaje: 'No se encontró la mascota solicitada.',
+      });
+    }
+
+    return res.status(200).json({
+      mascota: limpiarMascotaParaRespuesta(mascota),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      mensaje: 'Error al obtener el perfil público de la mascota.',
+      error: error.message,
+    });
+  }
+};
+
 const registrarMascota = async (req, res) => {
   try {
+    const idUsuario = req.usuario?.id;
     const {
       nombre,
       especie,
@@ -80,40 +145,73 @@ const registrarMascota = async (req, res) => {
       descripcion,
       telefono_dueno,
       direccion_dueno,
+      fecha_nacimiento,
       esta_perdida,
       latitud,
       longitud,
       idioma_registro,
     } = req.body;
+    const esMascotaPerdida = convertirBooleano(esta_perdida);
 
-    if (!nombre || !especie || latitud === undefined || longitud === undefined) {
-      return res.status(400).json({
-        mensaje: 'nombre, especie, latitud y longitud son obligatorios.',
+    if (!idUsuario) {
+      return res.status(401).json({
+        mensaje: 'No autorizado. Token faltante o inválido.',
       });
     }
 
-    const latitudNumerica = Number(latitud);
-    const longitudNumerica = Number(longitud);
-
-    if (Number.isNaN(latitudNumerica) || Number.isNaN(longitudNumerica)) {
+    if (!nombre || !especie) {
       return res.status(400).json({
-        mensaje: 'latitud y longitud deben ser valores numéricos válidos.',
+        mensaje: 'Nombre y especie son obligatorios.',
       });
     }
+
+    if (esMascotaPerdida && (!telefono_dueno || !direccion_dueno)) {
+      return res.status(400).json({
+        mensaje: 'Si la mascota está perdida, teléfono y dirección son obligatorios.',
+      });
+    }
+
+    const latitudNumerica = obtenerNumeroNullable(latitud);
+    const longitudNumerica = obtenerNumeroNullable(longitud);
+
+    if (esMascotaPerdida && (latitudNumerica == null || longitudNumerica == null)) {
+      return res.status(400).json({
+        mensaje: 'Si está perdida, marca en el mapa la zona de extravío.',
+      });
+    }
+
+    if (latitud !== undefined && latitud !== '' && latitudNumerica == null) {
+      return res.status(400).json({
+        mensaje: 'latitud debe ser un valor numérico válido.',
+      });
+    }
+
+    if (longitud !== undefined && longitud !== '' && longitudNumerica == null) {
+      return res.status(400).json({
+        mensaje: 'longitud debe ser un valor numérico válido.',
+      });
+    }
+
+    const fotoUrl = req.file
+      ? `/uploads/${path.basename(path.dirname(req.file.path))}/${req.file.filename}`
+      : null;
 
     const consultaInsertarMascota = `
       INSERT INTO mascotas (
+        id_usuario,
         nombre,
         especie,
         raza,
         descripcion,
         telefono_dueno,
         direccion_dueno,
+        fecha_nacimiento,
         esta_perdida,
         idioma_registro,
         latitud,
         longitud,
-        ubicacion
+        ubicacion,
+        foto_url
       )
       VALUES (
         $1,
@@ -124,20 +222,30 @@ const registrarMascota = async (req, res) => {
         $6,
         $7,
         $8,
-        $9,
+        COALESCE($9::boolean, false),
         $10,
-        ST_SetSRID(ST_MakePoint($10, $9), 4326)
+        CASE WHEN $9::boolean = TRUE THEN $11::float ELSE NULL END,
+        CASE WHEN $9::boolean = TRUE THEN $12::float ELSE NULL END,
+        CASE
+          WHEN $9::boolean = TRUE AND $11::float IS NOT NULL AND $12::float IS NOT NULL
+          THEN ST_SetSRID(ST_MakePoint($12, $11), 4326)
+          ELSE NULL
+        END,
+        $13
       )
       RETURNING
         id,
+        id_usuario,
         nombre,
         especie,
         raza,
         descripcion,
         telefono_dueno,
         direccion_dueno,
+        fecha_nacimiento,
         esta_perdida,
         idioma_registro,
+        foto_url,
         latitud,
         longitud,
         ST_AsGeoJSON(ubicacion)::json AS ubicacion,
@@ -145,21 +253,24 @@ const registrarMascota = async (req, res) => {
     `;
 
     const valoresMascota = [
+      idUsuario,
       nombre,
       especie,
       raza || null,
       descripcion || null,
       telefono_dueno || null,
       direccion_dueno || null,
-      convertirBooleano(esta_perdida),
+      fecha_nacimiento || null,
+      esta_perdida,
       idioma_registro || null,
       latitudNumerica,
       longitudNumerica,
+      fotoUrl,
     ];
 
     const resultado = await consultarBd(consultaInsertarMascota, valoresMascota);
     const mascotaRegistrada = resultado.rows[0];
-    const urlPerfilMascota = construirUrlPerfilMascota(req, mascotaRegistrada.id);
+    const urlPerfilMascota = construirUrlFrontend(req, mascotaRegistrada.id);
     const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);
 
     return res.status(201).json({
@@ -167,6 +278,7 @@ const registrarMascota = async (req, res) => {
       mascota: mascotaRegistrada,
       url_perfil: urlPerfilMascota,
       qr_perfil: qrPerfilMascota,
+      foto_url: fotoUrl,
     });
   } catch (error) {
     // ESTA LÍNEA ES LA CLAVE PARA DEBUGGEAR
@@ -190,7 +302,9 @@ const obtenerMascotasPerdidas = async (_req, res) => {
         descripcion,
         telefono_dueno,
         direccion_dueno,
+        fecha_nacimiento,
         esta_perdida,
+        foto_url,
         latitud,
         longitud,
         ST_AsGeoJSON(ubicacion)::json AS ubicacion,
@@ -215,6 +329,65 @@ const obtenerMascotasPerdidas = async (_req, res) => {
   }
 };
 
+const obtenerMisMascotas = async (req, res) => {
+  try {
+    const idUsuario = req.usuario?.id;
+
+    if (!idUsuario) {
+      return res.status(401).json({
+        mensaje: 'No autorizado. Token faltante o inválido.',
+      });
+    }
+
+    const consultaObtenerMisMascotas = `
+      SELECT
+        id,
+        id_usuario,
+        nombre,
+        especie,
+        raza,
+        descripcion,
+        telefono_dueno,
+        direccion_dueno,
+        fecha_nacimiento,
+        esta_perdida,
+        idioma_registro,
+        foto_url,
+        latitud,
+        longitud,
+        ST_AsGeoJSON(ubicacion)::json AS ubicacion,
+        creado_en
+      FROM mascotas
+      WHERE id_usuario = $1
+      ORDER BY creado_en DESC;
+    `;
+
+    const resultado = await consultarBd(consultaObtenerMisMascotas, [idUsuario]);
+    const mascotas = await Promise.all(
+      resultado.rows.map(async (mascota) => {
+        const urlPerfilMascota = construirUrlFrontend(req, mascota.id);
+        const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);
+
+        return {
+          ...mascota,
+          url_perfil: urlPerfilMascota,
+          qr_perfil: qrPerfilMascota,
+        };
+      }),
+    );
+
+    return res.status(200).json({
+      total: mascotas.length,
+      mascotas,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      mensaje: 'Error al obtener tus mascotas.',
+      error: error.message,
+    });
+  }
+};
+
 const buscarMascotasPorNombre = async (req, res) => {
   try {
     const textoBusqueda = String(req.query.q || '').trim();
@@ -222,16 +395,9 @@ const buscarMascotasPorNombre = async (req, res) => {
     const consultaBuscarMascotas = textoBusqueda
       ? {
           sql: `
-            SELECT
-              id,
-              nombre,
-              especie,
-              raza,
-              telefono_dueno,
-              esta_perdida,
-              creado_en
+            SELECT id, nombre, especie, raza, descripcion, telefono_dueno, direccion_dueno, fecha_nacimiento, esta_perdida, foto_url, creado_en
             FROM mascotas
-            WHERE nombre ILIKE $1
+            WHERE nombre ILIKE $1 OR especie ILIKE $1 OR raza ILIKE $1
             ORDER BY creado_en DESC;
           `,
           valores: [`%${textoBusqueda}%`],
@@ -243,8 +409,12 @@ const buscarMascotasPorNombre = async (req, res) => {
               nombre,
               especie,
               raza,
+              descripcion,
               telefono_dueno,
+              direccion_dueno,
+              fecha_nacimiento,
               esta_perdida,
+              foto_url,
               creado_en
             FROM mascotas
             ORDER BY creado_en DESC;
@@ -253,10 +423,7 @@ const buscarMascotasPorNombre = async (req, res) => {
         };
 
     const resultado = await consultarBd(consultaBuscarMascotas.sql, consultaBuscarMascotas.valores);
-    const mascotas = resultado.rows.map((mascota) => ({
-      ...mascota,
-      telefono_dueno: enmascararTelefono(mascota.telefono_dueno),
-    }));
+    const mascotas = resultado.rows.map((mascota) => limpiarMascotaParaRespuesta(mascota));
 
     return res.status(200).json({
       total: mascotas.length,
@@ -295,12 +462,12 @@ const verificarAccesoMascota = async (req, res) => {
       });
     }
 
-    const urlPerfilMascota = construirUrlPerfilMascota(req, mascota.id);
+    const urlPerfilMascota = construirUrlFrontend(req, mascota.id);
     const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);
 
     return res.status(200).json({
       mensaje: 'Acceso verificado correctamente.',
-      mascota,
+      mascota: limpiarMascotaParaRespuesta(mascota),
       url_perfil: urlPerfilMascota,
       qr_perfil: qrPerfilMascota,
     });
@@ -315,33 +482,48 @@ const verificarAccesoMascota = async (req, res) => {
 const cambiarEstadoMascota = async (req, res) => {
   try {
     const { id } = req.params;
-    const { telefono_dueno, esta_perdida } = req.body;
-
-    if (!telefono_dueno) {
-      return res.status(400).json({
-        mensaje: 'El teléfono es obligatorio para cambiar el estado.',
-      });
-    }
+    const { telefono_dueno, direccion_dueno, esta_perdida, latitud, longitud } = req.body;
+    const nuevoEstado = convertirBooleano(esta_perdida);
+    const latitudNumerica = obtenerNumeroNullable(latitud);
+    const longitudNumerica = obtenerNumeroNullable(longitud);
 
     const mascota = await obtenerMascotaPorId(id);
 
     if (!mascota) {
       return res.status(404).json({
-        mensaje: 'No se encontró la mascota solicitada.',
+        mensaje: 'Mascota no encontrada.',
       });
     }
 
-    if (String(mascota.telefono_dueno || '') !== String(telefono_dueno || '')) {
-      return res.status(401).json({
-        mensaje: 'El teléfono proporcionado no coincide con el registro.',
+    if (nuevoEstado && (latitudNumerica == null || longitudNumerica == null)) {
+      return res.status(400).json({
+        mensaje: 'Debes indicar la zona en el mapa.',
       });
     }
 
-    const nuevoEstado = convertirBooleano(esta_perdida);
+    if (nuevoEstado) {
+      const telFinal = telefono_dueno || mascota.telefono_dueno;
+      const dirFinal = direccion_dueno || mascota.direccion_dueno;
+
+      if (!telFinal || !dirFinal) {
+        return res.status(400).json({
+          mensaje: 'Teléfono y dirección son obligatorios para reportar un extravío.',
+        });
+      }
+    }
 
     const consultaActualizarEstado = `
       UPDATE mascotas
-      SET esta_perdida = $1
+      SET esta_perdida = $1::boolean,
+          telefono_dueno = COALESCE($5, telefono_dueno),
+          direccion_dueno = COALESCE($6, direccion_dueno),
+          latitud = CASE WHEN $1::boolean = TRUE THEN $3::float ELSE NULL END,
+          longitud = CASE WHEN $1::boolean = TRUE THEN $4::float ELSE NULL END,
+          ubicacion = CASE
+            WHEN $1::boolean = TRUE AND $3::float IS NOT NULL AND $4::float IS NOT NULL
+            THEN ST_SetSRID(ST_MakePoint($4::float, $3::float), 4326)
+            ELSE NULL
+          END
       WHERE id = $2
       RETURNING
         id,
@@ -351,22 +533,31 @@ const cambiarEstadoMascota = async (req, res) => {
         descripcion,
         telefono_dueno,
         direccion_dueno,
+        fecha_nacimiento,
         esta_perdida,
         idioma_registro,
+        foto_url,
         latitud,
         longitud,
         ST_AsGeoJSON(ubicacion)::json AS ubicacion,
         creado_en;
     `;
 
-    const resultado = await consultarBd(consultaActualizarEstado, [nuevoEstado, id]);
+    const resultado = await consultarBd(consultaActualizarEstado, [
+      nuevoEstado,
+      id,
+      latitudNumerica,
+      longitudNumerica,
+      telefono_dueno || null,
+      direccion_dueno || null,
+    ]);
     const mascotaActualizada = resultado.rows[0];
-    const urlPerfilMascota = construirUrlPerfilMascota(req, mascotaActualizada.id);
+    const urlPerfilMascota = construirUrlFrontend(req, mascotaActualizada.id);
     const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);
 
     return res.status(200).json({
       mensaje: 'Estado de la mascota actualizado correctamente.',
-      mascota: mascotaActualizada,
+      mascota: limpiarMascotaParaRespuesta(mascotaActualizada),
       url_perfil: urlPerfilMascota,
       qr_perfil: qrPerfilMascota,
     });
@@ -410,9 +601,12 @@ const borrarMascota = async (req, res) => {
 };
 
 module.exports = {
+  uploadMascotaFoto,
   registrarMascota,
   obtenerMascotasPerdidas,
+  obtenerMisMascotas,
   buscarMascotasPorNombre,
+  obtenerPerfilPublico,
   verificarAccesoMascota,
   cambiarEstadoMascota,
   borrarMascota,

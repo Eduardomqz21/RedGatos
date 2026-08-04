@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 
-const verificarTokenAdmin = (req, res, next) => {
+const ROLES_ADMIN = new Set(['admin', 'superadmin']);
+
+const verificarToken = (req, res, next) => {
   const encabezadoAutorizacion = req.headers.authorization || '';
   const [esquema, token] = encabezadoAutorizacion.split(' ');
 
@@ -21,13 +23,7 @@ const verificarTokenAdmin = (req, res, next) => {
 
     if (!usuario?.id || !usuario?.rol) {
       return res.status(403).json({
-        mensaje: 'Token inválido para acceso administrativo.',
-      });
-    }
-
-    if (!['admin', 'superadmin'].includes(usuario.rol)) {
-      return res.status(403).json({
-        mensaje: 'No tienes permisos para acceder a este recurso.',
+        mensaje: 'Token inválido.',
       });
     }
 
@@ -41,6 +37,17 @@ const verificarTokenAdmin = (req, res, next) => {
   }
 };
 
+const verificarRolAdmin = (req, res, next) => {
+  if (!ROLES_ADMIN.has(String(req.usuario?.rol || '').toLowerCase())) {
+    return res.status(403).json({
+      mensaje: 'No tienes permisos para acceder a esta función.',
+    });
+  }
+
+  return next();
+};
+
 module.exports = {
-  verificarTokenAdmin,
+  verificarToken,
+  verificarRolAdmin,
 };
