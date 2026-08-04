@@ -20,7 +20,23 @@ const storageFotosMascotas = multer.diskStorage({
   },
 });
 
-const uploadMascotaFoto = multer({ storage: storageFotosMascotas });
+const uploadMascotaFoto = multer({
+  storage: storageFotosMascotas,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    const tiposPermitidos = /jpeg|jpg|png|webp/;
+    const extensionValida = tiposPermitidos.test(path.extname(file.originalname).toLowerCase());
+    const mimetypeValido = tiposPermitidos.test(file.mimetype);
+
+    if (extensionValida && mimetypeValido) {
+      return cb(null, true);
+    }
+
+    cb(new Error('TIPO_ARCHIVO_INVALIDO'));
+  },
+});
 
 const convertirBooleano = (valor) => {
   if (typeof valor === 'boolean') {
@@ -32,6 +48,15 @@ const convertirBooleano = (valor) => {
   }
 
   return Boolean(valor);
+};
+
+const obtenerNumeroNullable = (valor) => {
+  if (valor === '' || valor == null) {
+    return null;
+  }
+
+  const numero = Number(valor);
+  return Number.isNaN(numero) ? null : numero;
 };
 
 const enmascararTelefono = (telefono) => {
@@ -62,6 +87,7 @@ const obtenerMascotaPorId = async (idMascota) => {
       descripcion,
       telefono_dueno,
       direccion_dueno,
+      fecha_nacimiento,
       esta_perdida,
       idioma_registro,
       foto_url,
@@ -119,11 +145,13 @@ const registrarMascota = async (req, res) => {
       descripcion,
       telefono_dueno,
       direccion_dueno,
+      fecha_nacimiento,
       esta_perdida,
       latitud,
       longitud,
       idioma_registro,
     } = req.body;
+    const esMascotaPerdida = convertirBooleano(esta_perdida);
 
     if (!idUsuario) {
       return res.status(401).json({
@@ -131,18 +159,36 @@ const registrarMascota = async (req, res) => {
       });
     }
 
-    if (!nombre || !especie || latitud === undefined || longitud === undefined) {
+    if (!nombre || !especie) {
       return res.status(400).json({
-        mensaje: 'nombre, especie, latitud y longitud son obligatorios.',
+        mensaje: 'Nombre y especie son obligatorios.',
       });
     }
 
-    const latitudNumerica = Number(latitud);
-    const longitudNumerica = Number(longitud);
-
-    if (Number.isNaN(latitudNumerica) || Number.isNaN(longitudNumerica)) {
+    if (esMascotaPerdida && (!telefono_dueno || !direccion_dueno)) {
       return res.status(400).json({
-        mensaje: 'latitud y longitud deben ser valores numéricos válidos.',
+        mensaje: 'Si la mascota está perdida, teléfono y dirección son obligatorios.',
+      });
+    }
+
+    const latitudNumerica = obtenerNumeroNullable(latitud);
+    const longitudNumerica = obtenerNumeroNullable(longitud);
+
+    if (esMascotaPerdida && (latitudNumerica == null || longitudNumerica == null)) {
+      return res.status(400).json({
+        mensaje: 'Si está perdida, marca en el mapa la zona de extravío.',
+      });
+    }
+
+    if (latitud !== undefined && latitud !== '' && latitudNumerica == null) {
+      return res.status(400).json({
+        mensaje: 'latitud debe ser un valor numérico válido.',
+      });
+    }
+
+    if (longitud !== undefined && longitud !== '' && longitudNumerica == null) {
+      return res.status(400).json({
+        mensaje: 'longitud debe ser un valor numérico válido.',
       });
     }
 
@@ -159,6 +205,7 @@ const registrarMascota = async (req, res) => {
         descripcion,
         telefono_dueno,
         direccion_dueno,
+        fecha_nacimiento,
         esta_perdida,
         idioma_registro,
         latitud,
@@ -175,11 +222,16 @@ const registrarMascota = async (req, res) => {
         $6,
         $7,
         $8,
-        $9,
+        COALESCE($9::boolean, false),
         $10,
-        $11,
-        ST_SetSRID(ST_MakePoint($11, $10), 4326),
-        $12
+        CASE WHEN $9::boolean = TRUE THEN $11::float ELSE NULL END,
+        CASE WHEN $9::boolean = TRUE THEN $12::float ELSE NULL END,
+        CASE
+          WHEN $9::boolean = TRUE AND $11::float IS NOT NULL AND $12::float IS NOT NULL
+          THEN ST_SetSRID(ST_MakePoint($12, $11), 4326)
+          ELSE NULL
+        END,
+        $13
       )
       RETURNING
         id,
@@ -190,6 +242,7 @@ const registrarMascota = async (req, res) => {
         descripcion,
         telefono_dueno,
         direccion_dueno,
+        fecha_nacimiento,
         esta_perdida,
         idioma_registro,
         foto_url,
@@ -207,7 +260,8 @@ const registrarMascota = async (req, res) => {
       descripcion || null,
       telefono_dueno || null,
       direccion_dueno || null,
-      convertirBooleano(esta_perdida),
+      fecha_nacimiento || null,
+      esta_perdida,
       idioma_registro || null,
       latitudNumerica,
       longitudNumerica,
@@ -248,6 +302,7 @@ const obtenerMascotasPerdidas = async (_req, res) => {
         descripcion,
         telefono_dueno,
         direccion_dueno,
+        fecha_nacimiento,
         esta_perdida,
         foto_url,
         latitud,
@@ -294,6 +349,7 @@ const obtenerMisMascotas = async (req, res) => {
         descripcion,
         telefono_dueno,
         direccion_dueno,
+        fecha_nacimiento,
         esta_perdida,
         idioma_registro,
         foto_url,
@@ -307,10 +363,22 @@ const obtenerMisMascotas = async (req, res) => {
     `;
 
     const resultado = await consultarBd(consultaObtenerMisMascotas, [idUsuario]);
+    const mascotas = await Promise.all(
+      resultado.rows.map(async (mascota) => {
+        const urlPerfilMascota = construirUrlFrontend(req, mascota.id);
+        const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);
+
+        return {
+          ...mascota,
+          url_perfil: urlPerfilMascota,
+          qr_perfil: qrPerfilMascota,
+        };
+      }),
+    );
 
     return res.status(200).json({
-      total: resultado.rows.length,
-      mascotas: resultado.rows,
+      total: mascotas.length,
+      mascotas,
     });
   } catch (error) {
     return res.status(500).json({
@@ -327,19 +395,9 @@ const buscarMascotasPorNombre = async (req, res) => {
     const consultaBuscarMascotas = textoBusqueda
       ? {
           sql: `
-            SELECT
-              id,
-              nombre,
-              especie,
-              raza,
-              descripcion,
-              telefono_dueno,
-              direccion_dueno,
-              esta_perdida,
-              foto_url,
-              creado_en
+            SELECT id, nombre, especie, raza, descripcion, telefono_dueno, direccion_dueno, fecha_nacimiento, esta_perdida, foto_url, creado_en
             FROM mascotas
-            WHERE nombre ILIKE $1
+            WHERE nombre ILIKE $1 OR especie ILIKE $1 OR raza ILIKE $1
             ORDER BY creado_en DESC;
           `,
           valores: [`%${textoBusqueda}%`],
@@ -354,6 +412,7 @@ const buscarMascotasPorNombre = async (req, res) => {
               descripcion,
               telefono_dueno,
               direccion_dueno,
+              fecha_nacimiento,
               esta_perdida,
               foto_url,
               creado_en
@@ -403,7 +462,7 @@ const verificarAccesoMascota = async (req, res) => {
       });
     }
 
-    const urlPerfilMascota = construirUrlPerfilMascota(req, mascota.id);
+    const urlPerfilMascota = construirUrlFrontend(req, mascota.id);
     const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);
 
     return res.status(200).json({
@@ -423,33 +482,48 @@ const verificarAccesoMascota = async (req, res) => {
 const cambiarEstadoMascota = async (req, res) => {
   try {
     const { id } = req.params;
-    const { telefono_dueno, esta_perdida } = req.body;
-
-    if (!telefono_dueno) {
-      return res.status(400).json({
-        mensaje: 'El teléfono es obligatorio para cambiar el estado.',
-      });
-    }
+    const { telefono_dueno, direccion_dueno, esta_perdida, latitud, longitud } = req.body;
+    const nuevoEstado = convertirBooleano(esta_perdida);
+    const latitudNumerica = obtenerNumeroNullable(latitud);
+    const longitudNumerica = obtenerNumeroNullable(longitud);
 
     const mascota = await obtenerMascotaPorId(id);
 
     if (!mascota) {
       return res.status(404).json({
-        mensaje: 'No se encontró la mascota solicitada.',
+        mensaje: 'Mascota no encontrada.',
       });
     }
 
-    if (String(mascota.telefono_dueno || '') !== String(telefono_dueno || '')) {
-      return res.status(401).json({
-        mensaje: 'El teléfono proporcionado no coincide con el registro.',
+    if (nuevoEstado && (latitudNumerica == null || longitudNumerica == null)) {
+      return res.status(400).json({
+        mensaje: 'Debes indicar la zona en el mapa.',
       });
     }
 
-    const nuevoEstado = convertirBooleano(esta_perdida);
+    if (nuevoEstado) {
+      const telFinal = telefono_dueno || mascota.telefono_dueno;
+      const dirFinal = direccion_dueno || mascota.direccion_dueno;
+
+      if (!telFinal || !dirFinal) {
+        return res.status(400).json({
+          mensaje: 'Teléfono y dirección son obligatorios para reportar un extravío.',
+        });
+      }
+    }
 
     const consultaActualizarEstado = `
       UPDATE mascotas
-      SET esta_perdida = $1
+      SET esta_perdida = $1::boolean,
+          telefono_dueno = COALESCE($5, telefono_dueno),
+          direccion_dueno = COALESCE($6, direccion_dueno),
+          latitud = CASE WHEN $1::boolean = TRUE THEN $3::float ELSE NULL END,
+          longitud = CASE WHEN $1::boolean = TRUE THEN $4::float ELSE NULL END,
+          ubicacion = CASE
+            WHEN $1::boolean = TRUE AND $3::float IS NOT NULL AND $4::float IS NOT NULL
+            THEN ST_SetSRID(ST_MakePoint($4::float, $3::float), 4326)
+            ELSE NULL
+          END
       WHERE id = $2
       RETURNING
         id,
@@ -459,6 +533,7 @@ const cambiarEstadoMascota = async (req, res) => {
         descripcion,
         telefono_dueno,
         direccion_dueno,
+        fecha_nacimiento,
         esta_perdida,
         idioma_registro,
         foto_url,
@@ -468,7 +543,14 @@ const cambiarEstadoMascota = async (req, res) => {
         creado_en;
     `;
 
-    const resultado = await consultarBd(consultaActualizarEstado, [nuevoEstado, id]);
+    const resultado = await consultarBd(consultaActualizarEstado, [
+      nuevoEstado,
+      id,
+      latitudNumerica,
+      longitudNumerica,
+      telefono_dueno || null,
+      direccion_dueno || null,
+    ]);
     const mascotaActualizada = resultado.rows[0];
     const urlPerfilMascota = construirUrlFrontend(req, mascotaActualizada.id);
     const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);

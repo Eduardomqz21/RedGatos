@@ -13,30 +13,6 @@ const inicializarBaseDeDatos = async () => {
     console.log('Instalando extensión pgcrypto...');
     await pool.query('CREATE EXTENSION IF NOT EXISTS pgcrypto;');
 
-    console.log('Borrando tabla existente si aplica...');
-    await pool.query('DROP TABLE IF EXISTS mascotas;');
-
-    console.log('Creando tabla "mascotas"...');
-    const queryCrearTabla = `
-      CREATE TABLE mascotas (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        nombre VARCHAR(100) NOT NULL,
-        especie VARCHAR(50) NOT NULL,
-        raza VARCHAR(100),
-        descripcion TEXT,
-        telefono_dueno VARCHAR(50),
-        direccion_dueno TEXT,
-        esta_perdida BOOLEAN DEFAULT false,
-        idioma_registro VARCHAR(10) DEFAULT 'es',
-        latitud DOUBLE PRECISION,
-        longitud DOUBLE PRECISION,
-        ubicacion GEOMETRY(Point, 4326),
-        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `;
-
-    await pool.query(queryCrearTabla);
-
     console.log('Creando tabla "usuarios"...');
     const queryCrearUsuarios = `
       CREATE TABLE IF NOT EXISTS usuarios (
@@ -50,6 +26,34 @@ const inicializarBaseDeDatos = async () => {
     `;
 
     await pool.query(queryCrearUsuarios);
+
+    console.log('Creando tabla "mascotas"...');
+    const queryCrearTabla = `
+      CREATE TABLE IF NOT EXISTS mascotas (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        id_usuario UUID REFERENCES usuarios(id) ON DELETE CASCADE,
+        nombre VARCHAR(100) NOT NULL,
+        especie VARCHAR(50) NOT NULL,
+        raza VARCHAR(100),
+        descripcion TEXT,
+        telefono_dueno VARCHAR(50),
+        direccion_dueno TEXT,
+        fecha_nacimiento DATE,
+        esta_perdida BOOLEAN DEFAULT false,
+        idioma_registro VARCHAR(10) DEFAULT 'es',
+        latitud DOUBLE PRECISION,
+        longitud DOUBLE PRECISION,
+        ubicacion GEOMETRY(Point, 4326),
+        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+
+    await pool.query(queryCrearTabla);
+
+    await pool.query(`
+      ALTER TABLE mascotas
+      ADD COLUMN IF NOT EXISTS fecha_nacimiento DATE;
+    `);
 
     await pool.query(`
       ALTER TABLE usuarios
@@ -79,9 +83,17 @@ const inicializarBaseDeDatos = async () => {
     console.log('✅ ¡Base de datos estructurada con éxito! Ya puedes iniciar tu API.');
   } catch (error) {
     console.error('❌ Error al configurar la base de datos:', error.message);
-  } finally {
-    await pool.end();
   }
 };
 
-inicializarBaseDeDatos();
+if (require.main === module) {
+  inicializarBaseDeDatos()
+    .then(() => pool.end())
+    .catch(async () => {
+      await pool.end();
+    });
+}
+
+module.exports = {
+  inicializarBaseDeDatos,
+};
