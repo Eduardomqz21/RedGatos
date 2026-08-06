@@ -1,106 +1,58 @@
 const multer = require('multer');
-const fs = require('fs');
 const path = require('path');
+const sharp = require('sharp');
+const fs = require('fs');
+const os = require('os');
+const crypto = require('crypto');
 const { consultarBd } = require('../config/bd.config');
-const { asegurarDirectorioMascota } = require('../utils/archivos.util');
+const { asegurarDirectorioMascota, borrarArchivoFisico } = require('../utils/archivos.util');
 const { construirUrlFrontend, generarQrMascota } = require('../utils/qr.util');
 
-const storageFotosMascotas = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    try {
-      const directorio = asegurarDirectorioMascota(req.body.nombre);
-      cb(null, directorio);
-    } catch (error) {
-      cb(error);
-    }
-  },
-  filename: (_req, file, cb) => {
-    const nombreSeguro = String(file.originalname || 'foto').replace(/[^a-zA-Z0-9._-]/g, '_');
-    cb(null, `${Date.now()}-${nombreSeguro}`);
-  },
+const almacenamientoTemporal = multer.diskStorage({
+  destination: (peticion, archivo, callback) => callback(null, os.tmpdir()),
+  filename: (peticion, archivo, callback) => callback(null, Date.now() + '-' + crypto.randomBytes(8).toString('hex'))
 });
 
-const uploadMascotaFoto = multer({
-  storage: storageFotosMascotas,
-  limits: {
-    fileSize: 5 * 1024 * 1024,
-  },
-  fileFilter: (req, file, cb) => {
+const subidaFotoMascota = multer({
+  storage: almacenamientoTemporal,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (peticion, archivo, devolucionLlamada) => {
     const tiposPermitidos = /jpeg|jpg|png|webp/;
-    const extensionValida = tiposPermitidos.test(path.extname(file.originalname).toLowerCase());
-    const mimetypeValido = tiposPermitidos.test(file.mimetype);
+    const extensionValida = tiposPermitidos.test(path.extname(archivo.originalname).toLowerCase());
+    const tipoMimeValido = tiposPermitidos.test(archivo.mimetype);
 
-    if (extensionValida && mimetypeValido) {
-      return cb(null, true);
+    if (extensionValida && tipoMimeValido) {
+      return devolucionLlamada(null, true);
     }
-
-    cb(new Error('TIPO_ARCHIVO_INVALIDO'));
+    devolucionLlamada(new Error('TIPO_ARCHIVO_INVALIDO'));
   },
 });
 
 const convertirBooleano = (valor) => {
-  if (typeof valor === 'boolean') {
-    return valor;
-  }
-
-  if (typeof valor === 'string') {
-    return valor.toLowerCase() === 'true';
-  }
-
+  if (typeof valor === 'boolean') return valor;
+  if (typeof valor === 'string') return valor.toLowerCase() === 'true';
   return Boolean(valor);
 };
 
-const obtenerNumeroNullable = (valor) => {
-  if (valor === '' || valor == null) {
-    return null;
-  }
-
+const obtenerNumeroNulo = (valor) => {
+  if (valor === '' || valor == null) return null;
   const numero = Number(valor);
   return Number.isNaN(numero) ? null : numero;
 };
 
-const enmascararTelefono = (telefono) => {
-  const textoTelefono = String(telefono || '').trim();
-
-  if (!textoTelefono) {
-    return '';
-  }
-
-  if (textoTelefono.length <= 7) {
-    return 'x'.repeat(textoTelefono.length);
-  }
-
-  const inicio = textoTelefono.slice(0, 4);
-  const final = textoTelefono.slice(-3);
-  const enmascarado = 'x'.repeat(Math.max(textoTelefono.length - 7, 0));
-
-  return `${inicio}${enmascarado}${final}`;
+const validarLongitudTexto = (texto, maximo) => {
+  if (!texto) return true;
+  return String(texto).length <= maximo;
 };
 
 const obtenerMascotaPorId = async (idMascota) => {
-  const consultaMascota = `
-    SELECT
-      id,
-      nombre,
-      especie,
-      raza,
-      descripcion,
-      telefono_dueno,
-      direccion_dueno,
-      fecha_nacimiento,
-      esta_perdida,
-      idioma_registro,
-      foto_url,
-      latitud,
-      longitud,
-      ST_AsGeoJSON(ubicacion)::json AS ubicacion,
-      creado_en
-    FROM mascotas
-    WHERE id = $1
-    LIMIT 1;
+  const consultaObtenerMascota = `
+    SELECT id, id_usuario, nombre, especie, raza, descripcion, telefono_dueno,
+      direccion_dueno, fecha_nacimiento, esta_perdida, idioma_registro,
+      foto_url, latitud, longitud, ST_AsGeoJSON(ubicacion)::json AS ubicacion, creado_en
+    FROM mascotas WHERE id = $1 LIMIT 1;
   `;
-
-  const resultado = await consultarBd(consultaMascota, [idMascota]);
+  const resultado = await consultarBd(consultaObtenerMascota, [idMascota]);
   return resultado.rows[0] || null;
 };
 
@@ -109,505 +61,273 @@ const limpiarMascotaParaRespuesta = (mascota) => {
     const { telefono_dueno, direccion_dueno, ...restoMascota } = mascota;
     return restoMascota;
   }
-
   return mascota;
 };
 
-const obtenerPerfilPublico = async (req, res) => {
+const obtenerPerfilPublico = async (peticion, respuesta) => {
   try {
-    const { id } = req.params;
-    const mascota = await obtenerMascotaPorId(id);
+    const { id } = peticion.params;
+    const mascotaEncontrada = await obtenerMascotaPorId(id);
 
-    if (!mascota) {
-      return res.status(404).json({
-        mensaje: 'No se encontró la mascota solicitada.',
-      });
+    if (!mascotaEncontrada) {
+      return respuesta.status(404).json({ mensaje: 'No se encontró la mascota.' });
     }
-
-    return res.status(200).json({
-      mascota: limpiarMascotaParaRespuesta(mascota),
-    });
+    return respuesta.status(200).json({ mascota: limpiarMascotaParaRespuesta(mascotaEncontrada) });
   } catch (error) {
-    return res.status(500).json({
-      mensaje: 'Error al obtener el perfil público de la mascota.',
-      error: error.message,
-    });
+    return respuesta.status(500).json({ mensaje: 'Error interno del servidor.' });
   }
 };
 
-const registrarMascota = async (req, res) => {
+const registrarMascota = async (peticion, respuesta) => {
   try {
-    const idUsuario = req.usuario?.id;
+    const idUsuario = peticion.usuario?.id;
     const {
-      nombre,
-      especie,
-      raza,
-      descripcion,
-      telefono_dueno,
-      direccion_dueno,
-      fecha_nacimiento,
-      esta_perdida,
-      latitud,
-      longitud,
-      idioma_registro,
-    } = req.body;
+      nombre, especie, raza, descripcion, telefono_dueno, direccion_dueno,
+      fecha_nacimiento, esta_perdida, latitud, longitud, idioma_registro,
+    } = peticion.body;
     const esMascotaPerdida = convertirBooleano(esta_perdida);
 
-    if (!idUsuario) {
-      return res.status(401).json({
-        mensaje: 'No autorizado. Token faltante o inválido.',
-      });
-    }
+    if (!idUsuario) return respuesta.status(401).json({ mensaje: 'No autorizado.' });
+    if (!nombre || !especie) return respuesta.status(400).json({ mensaje: 'Nombre y especie obligatorios.' });
 
-    if (!nombre || !especie) {
-      return res.status(400).json({
-        mensaje: 'Nombre y especie son obligatorios.',
-      });
-    }
-
+    if (!validarLongitudTexto(nombre, 100)) return respuesta.status(400).json({ mensaje: 'Nombre muy largo.' });
+    if (!validarLongitudTexto(especie, 50)) return respuesta.status(400).json({ mensaje: 'Especie muy larga.' });
+    
     if (esMascotaPerdida && (!telefono_dueno || !direccion_dueno)) {
-      return res.status(400).json({
-        mensaje: 'Si la mascota está perdida, teléfono y dirección son obligatorios.',
-      });
+      return respuesta.status(400).json({ mensaje: 'Teléfono y dirección obligatorios.' });
     }
 
-    const latitudNumerica = obtenerNumeroNullable(latitud);
-    const longitudNumerica = obtenerNumeroNullable(longitud);
+    const latitudNumerica = obtenerNumeroNulo(latitud);
+    const longitudNumerica = obtenerNumeroNulo(longitud);
 
-    if (esMascotaPerdida && (latitudNumerica == null || longitudNumerica == null)) {
-      return res.status(400).json({
-        mensaje: 'Si está perdida, marca en el mapa la zona de extravío.',
-      });
+    let fotoRutaFinal = null;
+
+    if (peticion.file) {
+      const directorioBase = asegurarDirectorioMascota(nombre);
+      // Seguridad Reforzada: Usar UUID para evitar inyección y colisión en el File System
+      const idUnicoFoto = crypto.randomUUID();
+      const nombreArchivoFinal = `${idUnicoFoto}.webp`;
+      const rutaAbsoluta = path.join(directorioBase, nombreArchivoFinal);
+
+      await sharp(peticion.file.path)
+        .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
+        .webp({ quality: 80 })
+        .toFile(rutaAbsoluta);
+
+      fs.unlinkSync(peticion.file.path);
+
+      const carpetaLetra = path.basename(directorioBase);
+      fotoRutaFinal = `/uploads/${carpetaLetra}/${nombreArchivoFinal}`;
     }
 
-    if (latitud !== undefined && latitud !== '' && latitudNumerica == null) {
-      return res.status(400).json({
-        mensaje: 'latitud debe ser un valor numérico válido.',
-      });
-    }
-
-    if (longitud !== undefined && longitud !== '' && longitudNumerica == null) {
-      return res.status(400).json({
-        mensaje: 'longitud debe ser un valor numérico válido.',
-      });
-    }
-
-    const fotoUrl = req.file
-      ? `/uploads/${path.basename(path.dirname(req.file.path))}/${req.file.filename}`
-      : null;
-
-    const consultaInsertarMascota = `
+    const consultaInsertar = `
       INSERT INTO mascotas (
-        id_usuario,
-        nombre,
-        especie,
-        raza,
-        descripcion,
-        telefono_dueno,
-        direccion_dueno,
-        fecha_nacimiento,
-        esta_perdida,
-        idioma_registro,
-        latitud,
-        longitud,
-        ubicacion,
-        foto_url
-      )
-      VALUES (
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        $8,
-        COALESCE($9::boolean, false),
-        $10,
+        id_usuario, nombre, especie, raza, descripcion, telefono_dueno,
+        direccion_dueno, fecha_nacimiento, esta_perdida, idioma_registro,
+        latitud, longitud, ubicacion, foto_url
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9::boolean, false), $10,
         CASE WHEN $9::boolean = TRUE THEN $11::float ELSE NULL END,
         CASE WHEN $9::boolean = TRUE THEN $12::float ELSE NULL END,
-        CASE
-          WHEN $9::boolean = TRUE AND $11::float IS NOT NULL AND $12::float IS NOT NULL
-          THEN ST_SetSRID(ST_MakePoint($12, $11), 4326)
-          ELSE NULL
-        END,
+        CASE WHEN $9::boolean = TRUE AND $11::float IS NOT NULL AND $12::float IS NOT NULL
+          THEN ST_SetSRID(ST_MakePoint($12, $11), 4326) ELSE NULL END,
         $13
-      )
-      RETURNING
-        id,
-        id_usuario,
-        nombre,
-        especie,
-        raza,
-        descripcion,
-        telefono_dueno,
-        direccion_dueno,
-        fecha_nacimiento,
-        esta_perdida,
-        idioma_registro,
-        foto_url,
-        latitud,
-        longitud,
-        ST_AsGeoJSON(ubicacion)::json AS ubicacion,
-        creado_en;
+      ) RETURNING *;
     `;
 
-    const valoresMascota = [
-      idUsuario,
-      nombre,
-      especie,
-      raza || null,
-      descripcion || null,
-      telefono_dueno || null,
-      direccion_dueno || null,
-      fecha_nacimiento || null,
-      esta_perdida,
-      idioma_registro || null,
-      latitudNumerica,
-      longitudNumerica,
-      fotoUrl,
+    const valoresInsercion = [
+      idUsuario, nombre, especie, raza || null, descripcion || null, telefono_dueno || null,
+      direccion_dueno || null, fecha_nacimiento || null, esta_perdida, idioma_registro || null,
+      latitudNumerica, longitudNumerica, fotoRutaFinal,
     ];
 
-    const resultado = await consultarBd(consultaInsertarMascota, valoresMascota);
+    const resultado = await consultarBd(consultaInsertar, valoresInsercion);
     const mascotaRegistrada = resultado.rows[0];
-    const urlPerfilMascota = construirUrlFrontend(req, mascotaRegistrada.id);
+    const urlPerfilMascota = construirUrlFrontend(peticion, mascotaRegistrada.id);
     const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);
 
-    return res.status(201).json({
-      mensaje: 'Mascota registrada correctamente.',
+    return respuesta.status(201).json({
+      mensaje: 'Mascota registrada.',
       mascota: mascotaRegistrada,
       url_perfil: urlPerfilMascota,
       qr_perfil: qrPerfilMascota,
-      foto_url: fotoUrl,
+      foto_url: fotoRutaFinal,
     });
   } catch (error) {
-    // ESTA LÍNEA ES LA CLAVE PARA DEBUGGEAR
-    console.error('🚨 [ERROR SQL AL REGISTRAR]:', error);
-
-    return res.status(500).json({
-      mensaje: 'Error al registrar la mascota.',
-      error: error.message,
-    });
+    if (peticion.file && fs.existsSync(peticion.file.path)) fs.unlinkSync(peticion.file.path);
+    return respuesta.status(500).json({ mensaje: 'Error interno al registrar.' });
   }
 };
 
-const obtenerMascotasPerdidas = async (_req, res) => {
+const obtenerMascotasPerdidas = async (peticion, respuesta) => {
   try {
-    const consultaObtenerMascotas = `
-      SELECT
-        id,
-        nombre,
-        especie,
-        raza,
-        descripcion,
-        telefono_dueno,
-        direccion_dueno,
-        fecha_nacimiento,
-        esta_perdida,
-        foto_url,
-        latitud,
-        longitud,
-        ST_AsGeoJSON(ubicacion)::json AS ubicacion,
-        creado_en
-      FROM mascotas
-      WHERE esta_perdida = TRUE
-      ORDER BY creado_en DESC;
-    `;
+    const { norte, sur, este, oeste, limit, page } = peticion.query;
+    const limite = Math.min(parseInt(limit) || 100, 500);
+    const desplazamiento = (Math.max(parseInt(page) || 1, 1) - 1) * limite;
 
-    const resultado = await consultarBd(consultaObtenerMascotas);
-    const mascotas = resultado.rows.map((mascota) => limpiarMascotaParaRespuesta(mascota));
+    let consultaPerdidas;
+    let parametros;
 
-    return res.status(200).json({
-      total: mascotas.length,
-      mascotas,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      mensaje: 'Error al obtener las mascotas perdidas.',
-      error: error.message,
-    });
-  }
-};
-
-const obtenerMisMascotas = async (req, res) => {
-  try {
-    const idUsuario = req.usuario?.id;
-
-    if (!idUsuario) {
-      return res.status(401).json({
-        mensaje: 'No autorizado. Token faltante o inválido.',
-      });
+    if (norte && sur && este && oeste) {
+      consultaPerdidas = `
+        SELECT id, nombre, especie, raza, descripcion, telefono_dueno,
+               fecha_nacimiento, esta_perdida, foto_url,
+               latitud, longitud, ST_AsGeoJSON(ubicacion)::json AS ubicacion, creado_en
+        FROM mascotas
+        WHERE esta_perdida = TRUE 
+          AND ST_Contains(ST_MakeEnvelope($1, $2, $3, $4, 4326), ubicacion)
+        ORDER BY creado_en DESC
+        LIMIT $5 OFFSET $6;
+      `;
+      parametros = [parseFloat(oeste), parseFloat(sur), parseFloat(este), parseFloat(norte), limite, desplazamiento];
+    } else {
+      consultaPerdidas = `
+        SELECT id, nombre, especie, raza, descripcion, telefono_dueno,
+               fecha_nacimiento, esta_perdida, foto_url,
+               latitud, longitud, ST_AsGeoJSON(ubicacion)::json AS ubicacion, creado_en
+        FROM mascotas
+        WHERE esta_perdida = TRUE
+        ORDER BY creado_en DESC
+        LIMIT $1 OFFSET $2;
+      `;
+      parametros = [limite, desplazamiento];
     }
 
-    const consultaObtenerMisMascotas = `
-      SELECT
-        id,
-        id_usuario,
-        nombre,
-        especie,
-        raza,
-        descripcion,
-        telefono_dueno,
-        direccion_dueno,
-        fecha_nacimiento,
-        esta_perdida,
-        idioma_registro,
-        foto_url,
-        latitud,
-        longitud,
-        ST_AsGeoJSON(ubicacion)::json AS ubicacion,
-        creado_en
-      FROM mascotas
-      WHERE id_usuario = $1
-      ORDER BY creado_en DESC;
-    `;
+    const resultado = await consultarBd(consultaPerdidas, parametros);
+    const listaMascotas = resultado.rows.map(limpiarMascotaParaRespuesta);
 
-    const resultado = await consultarBd(consultaObtenerMisMascotas, [idUsuario]);
-    const mascotas = await Promise.all(
+    return respuesta.status(200).json({ total: listaMascotas.length, mascotas: listaMascotas });
+  } catch (error) {
+    return respuesta.status(500).json({ mensaje: 'Error al obtener mascotas perdidas.' });
+  }
+};
+
+const obtenerMisMascotas = async (peticion, respuesta) => {
+  try {
+    const idUsuario = peticion.usuario?.id;
+    const resultado = await consultarBd(`SELECT * FROM mascotas WHERE id_usuario = $1 ORDER BY creado_en DESC;`, [idUsuario]);
+    
+    const misMascotas = await Promise.all(
       resultado.rows.map(async (mascota) => {
-        const urlPerfilMascota = construirUrlFrontend(req, mascota.id);
-        const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);
-
-        return {
-          ...mascota,
-          url_perfil: urlPerfilMascota,
-          qr_perfil: qrPerfilMascota,
-        };
-      }),
+        const urlPerfil = construirUrlFrontend(peticion, mascota.id);
+        return { ...mascota, url_perfil: urlPerfil, qr_perfil: await generarQrMascota(urlPerfil) };
+      })
     );
-
-    return res.status(200).json({
-      total: mascotas.length,
-      mascotas,
-    });
+    return respuesta.status(200).json({ total: misMascotas.length, mascotas: misMascotas });
   } catch (error) {
-    return res.status(500).json({
-      mensaje: 'Error al obtener tus mascotas.',
-      error: error.message,
-    });
+    return respuesta.status(500).json({ mensaje: 'Error interno.' });
   }
 };
 
-const buscarMascotasPorNombre = async (req, res) => {
+const buscarMascotasPorNombre = async (peticion, respuesta) => {
   try {
-    const textoBusqueda = String(req.query.q || '').trim();
+    const textoBusqueda = String(peticion.query.q || '').trim();
+    const limite = Math.min(parseInt(peticion.query.limit) || 50, 100);
+    const desplazamiento = (Math.max(parseInt(peticion.query.page) || 1, 1) - 1) * limite;
 
-    const consultaBuscarMascotas = textoBusqueda
-      ? {
-          sql: `
-            SELECT id, nombre, especie, raza, descripcion, telefono_dueno, direccion_dueno, fecha_nacimiento, esta_perdida, foto_url, creado_en
-            FROM mascotas
-            WHERE nombre ILIKE $1 OR especie ILIKE $1 OR raza ILIKE $1
-            ORDER BY creado_en DESC;
-          `,
-          valores: [`%${textoBusqueda}%`],
-        }
-      : {
-          sql: `
-            SELECT
-              id,
-              nombre,
-              especie,
-              raza,
-              descripcion,
-              telefono_dueno,
-              direccion_dueno,
-              fecha_nacimiento,
-              esta_perdida,
-              foto_url,
-              creado_en
-            FROM mascotas
-            ORDER BY creado_en DESC;
-          `,
-          valores: [],
-        };
+    const consultaBusqueda = textoBusqueda ? `
+      SELECT id, nombre, especie, raza, descripcion, telefono_dueno, direccion_dueno,
+             fecha_nacimiento, esta_perdida, foto_url, creado_en
+      FROM mascotas WHERE nombre ILIKE $1 OR especie ILIKE $1 OR raza ILIKE $1
+      ORDER BY creado_en DESC LIMIT $2 OFFSET $3;
+    ` : `
+      SELECT id, nombre, especie, raza, descripcion, telefono_dueno, direccion_dueno,
+             fecha_nacimiento, esta_perdida, foto_url, creado_en
+      FROM mascotas ORDER BY creado_en DESC LIMIT $1 OFFSET $2;
+    `;
 
-    const resultado = await consultarBd(consultaBuscarMascotas.sql, consultaBuscarMascotas.valores);
-    const mascotas = resultado.rows.map((mascota) => limpiarMascotaParaRespuesta(mascota));
-
-    return res.status(200).json({
-      total: mascotas.length,
-      mascotas,
-    });
+    const valoresBusqueda = textoBusqueda ? [`%${textoBusqueda}%`, limite, desplazamiento] : [limite, desplazamiento];
+    const resultado = await consultarBd(consultaBusqueda, valoresBusqueda);
+    return respuesta.status(200).json({ total: resultado.rows.length, mascotas: resultado.rows.map(limpiarMascotaParaRespuesta) });
   } catch (error) {
-    return res.status(500).json({
-      mensaje: 'Error al buscar mascotas por nombre.',
-      error: error.message,
-    });
+    return respuesta.status(500).json({ mensaje: 'Error en búsqueda.' });
   }
 };
 
-const verificarAccesoMascota = async (req, res) => {
+const verificarAccesoMascota = async (peticion, respuesta) => {
   try {
-    const { id } = req.params;
-    const { telefono_dueno } = req.body;
+    const { id } = peticion.params;
+    const { telefono_dueno } = peticion.body;
 
-    if (!telefono_dueno) {
-      return res.status(400).json({
-        mensaje: 'El teléfono es obligatorio para verificar el acceso.',
-      });
+    const mascotaEncontrada = await obtenerMascotaPorId(id);
+    if (!mascotaEncontrada) return respuesta.status(404).json({ mensaje: 'No se encontró.' });
+    if (String(mascotaEncontrada.telefono_dueno || '') !== String(telefono_dueno || '')) {
+      return respuesta.status(401).json({ mensaje: 'Teléfono incorrecto.' });
     }
 
-    const mascota = await obtenerMascotaPorId(id);
-
-    if (!mascota) {
-      return res.status(404).json({
-        mensaje: 'No se encontró la mascota solicitada.',
-      });
-    }
-
-    if (String(mascota.telefono_dueno || '') !== String(telefono_dueno || '')) {
-      return res.status(401).json({
-        mensaje: 'El teléfono proporcionado no coincide con el registro.',
-      });
-    }
-
-    const urlPerfilMascota = construirUrlFrontend(req, mascota.id);
-    const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);
-
-    return res.status(200).json({
-      mensaje: 'Acceso verificado correctamente.',
-      mascota: limpiarMascotaParaRespuesta(mascota),
+    const urlPerfilMascota = construirUrlFrontend(peticion, mascotaEncontrada.id);
+    return respuesta.status(200).json({
+      mensaje: 'Acceso verificado.',
+      mascota: limpiarMascotaParaRespuesta(mascotaEncontrada),
       url_perfil: urlPerfilMascota,
-      qr_perfil: qrPerfilMascota,
+      qr_perfil: await generarQrMascota(urlPerfilMascota),
     });
   } catch (error) {
-    return res.status(500).json({
-      mensaje: 'Error al verificar el acceso de la mascota.',
-      error: error.message,
-    });
+    return respuesta.status(500).json({ mensaje: 'Error interno.' });
   }
 };
 
-const cambiarEstadoMascota = async (req, res) => {
+const cambiarEstadoMascota = async (peticion, respuesta) => {
   try {
-    const { id } = req.params;
-    const { telefono_dueno, direccion_dueno, esta_perdida, latitud, longitud } = req.body;
+    const { id } = peticion.params;
+    const { telefono_dueno, direccion_dueno, esta_perdida, latitud, longitud } = peticion.body;
     const nuevoEstado = convertirBooleano(esta_perdida);
-    const latitudNumerica = obtenerNumeroNullable(latitud);
-    const longitudNumerica = obtenerNumeroNullable(longitud);
+    
+    const mascotaEncontrada = await obtenerMascotaPorId(id);
+    if (!mascotaEncontrada) return respuesta.status(404).json({ mensaje: 'Mascota no encontrada.' });
 
-    const mascota = await obtenerMascotaPorId(id);
-
-    if (!mascota) {
-      return res.status(404).json({
-        mensaje: 'Mascota no encontrada.',
-      });
+    if (mascotaEncontrada.id_usuario !== peticion.usuario.id && peticion.usuario.rol !== 'superadmin' && peticion.usuario.rol !== 'admin') {
+        return respuesta.status(403).json({ mensaje: 'Acceso denegado.' });
     }
 
-    if (nuevoEstado && (latitudNumerica == null || longitudNumerica == null)) {
-      return res.status(400).json({
-        mensaje: 'Debes indicar la zona en el mapa.',
-      });
-    }
-
-    if (nuevoEstado) {
-      const telFinal = telefono_dueno || mascota.telefono_dueno;
-      const dirFinal = direccion_dueno || mascota.direccion_dueno;
-
-      if (!telFinal || !dirFinal) {
-        return res.status(400).json({
-          mensaje: 'Teléfono y dirección son obligatorios para reportar un extravío.',
-        });
-      }
-    }
-
-    const consultaActualizarEstado = `
-      UPDATE mascotas
-      SET esta_perdida = $1::boolean,
-          telefono_dueno = COALESCE($5, telefono_dueno),
-          direccion_dueno = COALESCE($6, direccion_dueno),
-          latitud = CASE WHEN $1::boolean = TRUE THEN $3::float ELSE NULL END,
-          longitud = CASE WHEN $1::boolean = TRUE THEN $4::float ELSE NULL END,
-          ubicacion = CASE
-            WHEN $1::boolean = TRUE AND $3::float IS NOT NULL AND $4::float IS NOT NULL
-            THEN ST_SetSRID(ST_MakePoint($4::float, $3::float), 4326)
-            ELSE NULL
-          END
-      WHERE id = $2
-      RETURNING
-        id,
-        nombre,
-        especie,
-        raza,
-        descripcion,
-        telefono_dueno,
-        direccion_dueno,
-        fecha_nacimiento,
-        esta_perdida,
-        idioma_registro,
-        foto_url,
-        latitud,
-        longitud,
-        ST_AsGeoJSON(ubicacion)::json AS ubicacion,
-        creado_en;
+    const consultaActualizacion = `
+      UPDATE mascotas SET esta_perdida = $1::boolean, telefono_dueno = COALESCE($4, telefono_dueno),
+      direccion_dueno = COALESCE($5, direccion_dueno),
+      latitud = CASE WHEN $1::boolean = TRUE THEN $2::float ELSE NULL END,
+      longitud = CASE WHEN $1::boolean = TRUE THEN $3::float ELSE NULL END,
+      ubicacion = CASE WHEN $1::boolean = TRUE AND $2::float IS NOT NULL AND $3::float IS NOT NULL
+        THEN ST_SetSRID(ST_MakePoint($3::float, $2::float), 4326) ELSE NULL END
+      WHERE id = $6 RETURNING *;
     `;
 
-    const resultado = await consultarBd(consultaActualizarEstado, [
-      nuevoEstado,
-      id,
-      latitudNumerica,
-      longitudNumerica,
-      telefono_dueno || null,
-      direccion_dueno || null,
+    const resultado = await consultarBd(consultaActualizacion, [
+      nuevoEstado, obtenerNumeroNulo(latitud), obtenerNumeroNulo(longitud),
+      telefono_dueno || null, direccion_dueno || null, id
     ]);
-    const mascotaActualizada = resultado.rows[0];
-    const urlPerfilMascota = construirUrlFrontend(req, mascotaActualizada.id);
-    const qrPerfilMascota = await generarQrMascota(urlPerfilMascota);
 
-    return res.status(200).json({
-      mensaje: 'Estado de la mascota actualizado correctamente.',
-      mascota: limpiarMascotaParaRespuesta(mascotaActualizada),
-      url_perfil: urlPerfilMascota,
-      qr_perfil: qrPerfilMascota,
+    const urlPerfil = construirUrlFrontend(peticion, resultado.rows[0].id);
+    return respuesta.status(200).json({
+      mensaje: 'Estado actualizado.',
+      mascota: limpiarMascotaParaRespuesta(resultado.rows[0]),
+      url_perfil: urlPerfil,
+      qr_perfil: await generarQrMascota(urlPerfil)
     });
   } catch (error) {
-    return res.status(500).json({
-      mensaje: 'Error al cambiar el estado de la mascota.',
-      error: error.message,
-    });
+    return respuesta.status(500).json({ mensaje: 'Error al actualizar.' });
   }
 };
 
-const borrarMascota = async (req, res) => {
+const borrarMascota = async (peticion, respuesta) => {
   try {
-    const { id } = req.params;
+    const { id } = peticion.params;
+    const mascotaEncontrada = await obtenerMascotaPorId(id);
+    if (!mascotaEncontrada) return respuesta.status(404).json({ mensaje: 'Mascota no encontrada.' });
 
-    const consultaBorrarMascota = `
-      DELETE FROM mascotas
-      WHERE id = $1
-      RETURNING id, nombre;
-    `;
-
-    const resultado = await consultarBd(consultaBorrarMascota, [id]);
-    const mascotaEliminada = resultado.rows[0];
-
-    if (!mascotaEliminada) {
-      return res.status(404).json({
-        mensaje: 'No se encontró la mascota para eliminar.',
-      });
+    if (mascotaEncontrada.id_usuario !== peticion.usuario.id && peticion.usuario.rol !== 'superadmin' && peticion.usuario.rol !== 'admin') {
+        return respuesta.status(403).json({ mensaje: 'Acceso denegado.' });
     }
 
-    return res.status(200).json({
-      mensaje: 'Mascota eliminada correctamente.',
-      mascota: mascotaEliminada,
-    });
+    await consultarBd(`DELETE FROM mascotas WHERE id = $1;`, [id]);
+    if (mascotaEncontrada.foto_url) borrarArchivoFisico(mascotaEncontrada.foto_url);
+
+    return respuesta.status(200).json({ mensaje: 'Mascota eliminada.' });
   } catch (error) {
-    return res.status(500).json({
-      mensaje: 'Error al borrar la mascota.',
-      error: error.message,
-    });
+    return respuesta.status(500).json({ mensaje: 'Error al borrar.' });
   }
 };
 
 module.exports = {
-  uploadMascotaFoto,
-  registrarMascota,
-  obtenerMascotasPerdidas,
-  obtenerMisMascotas,
-  buscarMascotasPorNombre,
-  obtenerPerfilPublico,
-  verificarAccesoMascota,
-  cambiarEstadoMascota,
-  borrarMascota,
+  subidaFotoMascota, registrarMascota, obtenerMascotasPerdidas,
+  obtenerMisMascotas, buscarMascotasPorNombre, obtenerPerfilPublico,
+  verificarAccesoMascota, cambiarEstadoMascota, borrarMascota,
 };

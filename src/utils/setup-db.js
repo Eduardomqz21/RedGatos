@@ -1,19 +1,14 @@
 require('dotenv').config();
-
 const { pool } = require('../config/bd.config');
 const bcrypt = require('bcrypt');
 
 const inicializarBaseDeDatos = async () => {
-  console.log('⏳ Iniciando configuración de la base de datos...');
-
+  console.log('⏳ Iniciando configuración de la base de datos de PetMap...');
   try {
-    console.log('Instalando extensión PostGIS...');
     await pool.query('CREATE EXTENSION IF NOT EXISTS postgis;');
-
-    console.log('Instalando extensión pgcrypto...');
     await pool.query('CREATE EXTENSION IF NOT EXISTS pgcrypto;');
+    await pool.query('CREATE EXTENSION IF NOT EXISTS pg_trgm;');
 
-    console.log('Creando tabla "usuarios"...');
     const queryCrearUsuarios = `
       CREATE TABLE IF NOT EXISTS usuarios (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -21,13 +16,13 @@ const inicializarBaseDeDatos = async () => {
         correo VARCHAR(255) UNIQUE NOT NULL,
         contrasena_hash VARCHAR(255) NOT NULL,
         rol VARCHAR(50) DEFAULT 'admin',
+        token_recuperacion VARCHAR(255),
+        expresion_recuperacion TIMESTAMP,
         creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
-
     await pool.query(queryCrearUsuarios);
 
-    console.log('Creando tabla "mascotas"...');
     const queryCrearTabla = `
       CREATE TABLE IF NOT EXISTS mascotas (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -44,56 +39,52 @@ const inicializarBaseDeDatos = async () => {
         latitud DOUBLE PRECISION,
         longitud DOUBLE PRECISION,
         ubicacion GEOMETRY(Point, 4326),
+        foto_url TEXT,
+        curm VARCHAR(50),
         creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
-
     await pool.query(queryCrearTabla);
 
-    await pool.query(`
-      ALTER TABLE mascotas
-      ADD COLUMN IF NOT EXISTS fecha_nacimiento DATE;
-    `);
-
-    await pool.query(`
-      ALTER TABLE usuarios
-      ADD COLUMN IF NOT EXISTS nombre VARCHAR(100);
-    `);
-
-    console.log('Creando Súper Administrador por defecto...');
-    const hashAdmin = await bcrypt.hash('admin123', 10);
-    const queryAdmin = `
-      INSERT INTO usuarios (correo, contrasena_hash, rol)
-      VALUES ('admin@redgatos.com', $1, 'superadmin')
-      ON CONFLICT (correo)
-      DO UPDATE SET
-        contrasena_hash = EXCLUDED.contrasena_hash,
-        rol = EXCLUDED.rol,
-        nombre = 'Super Admin';
+    // Tabla para lista negra de JWT (Solución ARCH-001)
+    const queryCrearTokensBloqueados = `
+      CREATE TABLE IF NOT EXISTS tokens_bloqueados (
+        token TEXT PRIMARY KEY,
+        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `;
+    await pool.query(queryCrearTokensBloqueados);
 
-    await pool.query(queryAdmin, [hashAdmin]);
+    await pool.query(`ALTER TABLE mascotas ADD COLUMN IF NOT EXISTS curm VARCHAR(50);`);
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token_recuperacion VARCHAR(255);`);
+    await pool.query(`ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS expiracion_recuperacion TIMESTAMP;`);
 
-    console.log('Creando índice espacial...');
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS indice_mascotas_ubicacion
-      ON mascotas USING GIST (ubicacion);
-    `);
+    const passAdmin = process.env.ADMIN_PASSWORD || 'admin123';
+    const emailAdmin = process.env.ADMIN_EMAIL || 'admin@petmap.com';
+    const hashAdmin = await bcrypt.hash(passAdmin, 10);
+    const queryAdmin = `
+      INSERT INTO usuarios (correo, contrasena_hash, rol, nombre)
+      VALUES ($1, $2, 'superadmin', 'Super Admin')
+      ON CONFLICT (correo)
+      DO UPDATE SET contrasena_hash = EXCLUDED.contrasena_hash, rol = EXCLUDED.rol;
+    `;
+    await pool.query(queryAdmin, [emailAdmin, hashAdmin]);
 
-    console.log('✅ ¡Base de datos estructurada con éxito! Ya puedes iniciar tu API.');
+    await pool.query(`CREATE INDEX IF NOT EXISTS indice_mascotas_ubicacion ON mascotas USING GIST (ubicacion);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_mascotas_usuario ON mascotas(id_usuario);`);
+    
+    // Solución DB-002: Índices para búsquedas optimizadas sin escaneo completo
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_mascotas_nombre_trgm ON mascotas USING GIN (nombre gin_trgm_ops);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_mascotas_especie_trgm ON mascotas USING GIN (especie gin_trgm_ops);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_mascotas_raza_trgm ON mascotas USING GIN (raza gin_trgm_ops);`);
+
+    console.log('✅ ¡Base de datos estructurada con éxito!');
   } catch (error) {
     console.error('❌ Error al configurar la base de datos:', error.message);
   }
 };
 
 if (require.main === module) {
-  inicializarBaseDeDatos()
-    .then(() => pool.end())
-    .catch(async () => {
-      await pool.end();
-    });
+  inicializarBaseDeDatos().then(() => pool.end()).catch(async () => await pool.end());
 }
-
-module.exports = {
-  inicializarBaseDeDatos,
-};
+module.exports = { inicializarBaseDeDatos };

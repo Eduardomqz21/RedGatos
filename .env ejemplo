@@ -1,0 +1,31 @@
+# ==========================================
+# CONFIGURACIÓN DEL SERVIDOR
+# ==========================================
+NODE_ENV=production
+PORT=3000
+# El puerto / dominio donde corre el frontend (ej. localhost:3000 o https://midominio.com)
+CORS_ORIGIN=http://localhost:3000
+
+# ==========================================
+# BASE DE DATOS
+# ==========================================
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=red_gatos_bd
+DB_USER=postgres
+DB_PASSWORD=mipasswordseguro
+
+# ==========================================
+# SEGURIDAD (AUTENTICACIÓN Y ROLES)
+# ==========================================
+# Ejecuta: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+JWT_SECRET=tu_secreto_super_seguro_aqui
+
+# Credenciales del Superadmin por defecto
+ADMIN_EMAIL=admin@petmap.com
+ADMIN_PASSWORD=ContrasenaSegura!123
+
+# ==========================================
+# SISTEMA DE ARCHIVOS
+# ==========================================
+UPLOAD_DIR=D:\PetMap\uploads
