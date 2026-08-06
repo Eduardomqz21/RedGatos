@@ -1,50 +1,55 @@
 const jwt = require('jsonwebtoken');
+const { consultarBd } = require('../config/bd.config');
 
 const ROLES_ADMIN = new Set(['admin', 'superadmin']);
 
-const verificarToken = (req, res, next) => {
-  const encabezadoAutorizacion = req.headers.authorization || '';
-  const [esquema, token] = encabezadoAutorizacion.split(' ');
+const verificarToken = async (peticion, respuesta, siguiente) => {
+  const token = peticion.cookies?.petmap_token;
 
-  if (esquema !== 'Bearer' || !token) {
-    return res.status(401).json({
-      mensaje: 'No autorizado. Token faltante o formato inválido.',
-    });
-  }
-
-  if (!process.env.JWT_SECRET) {
-    return res.status(500).json({
-      mensaje: 'JWT_SECRET no está configurado en el servidor.',
+  if (!token) {
+    return respuesta.status(401).json({
+      mensaje: 'No autorizado. La sesión no existe o ha expirado.',
     });
   }
 
   try {
-    const usuario = jwt.verify(token, process.env.JWT_SECRET);
+    // 1. Verificación en memoria (Rápida - falla inmediatamente si fue manipulado)
+    const usuarioDecodificado = jwt.verify(token, process.env.JWT_SECRET);
 
-    if (!usuario?.id || !usuario?.rol) {
-      return res.status(403).json({
-        mensaje: 'Token inválido.',
-      });
+    if (!usuarioDecodificado?.id || !usuarioDecodificado?.rol) {
+      return respuesta.status(403).json({ mensaje: 'El token proporcionado no es válido.' });
     }
 
-    req.usuario = usuario;
-    return next();
+    // 2. Verificación en base de datos (Lista negra para Logout seguro)
+    const consultaBloqueo = 'SELECT 1 FROM tokens_bloqueados WHERE token = $1 LIMIT 1;';
+    const resultadoBloqueo = await consultarBd(consultaBloqueo, [token]);
+    
+    if (resultadoBloqueo.rowCount > 0) {
+      throw new Error('TOKEN_REVOCADO');
+    }
+
+    peticion.usuario = usuarioDecodificado;
+    return siguiente();
   } catch (error) {
-    return res.status(403).json({
-      mensaje: 'Token inválido o expirado.',
-      error: error.message,
+    respuesta.clearCookie('petmap_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict'
+    });
+    
+    return respuesta.status(403).json({
+      mensaje: 'La sesión ha expirado o ha sido revocada por seguridad.',
     });
   }
 };
 
-const verificarRolAdmin = (req, res, next) => {
-  if (!ROLES_ADMIN.has(String(req.usuario?.rol || '').toLowerCase())) {
-    return res.status(403).json({
-      mensaje: 'No tienes permisos para acceder a esta función.',
+const verificarRolAdmin = (peticion, respuesta, siguiente) => {
+  if (!ROLES_ADMIN.has(String(peticion.usuario?.rol || '').toLowerCase())) {
+    return respuesta.status(403).json({
+      mensaje: 'Acceso denegado. Se requieren privilegios de administrador para realizar esta acción.',
     });
   }
-
-  return next();
+  return siguiente();
 };
 
 module.exports = {
