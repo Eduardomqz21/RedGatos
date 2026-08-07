@@ -29,3 +29,5 @@ ADMIN_PASSWORD=ContrasenaSegura!123
 # SISTEMA DE ARCHIVOS
 # ==========================================
 UPLOAD_DIR=D:\PetMap\uploads
+# Llave de cifrado AES-256 (Generada para producción)
+ENCRYPTION_KEY=

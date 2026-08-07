@@ -1,3 +1,4 @@
+// src/controllers/auth.controller.js
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -43,7 +44,6 @@ const registrarUsuario = async (peticion, respuesta) => {
     });
   } catch (error) {
     const correoDuplicado = error.code === '23505';
-    // Solución SEC-005: No exponer error.message de la base de datos
     return respuesta.status(correoDuplicado ? 409 : 500).json({
       mensaje: correoDuplicado ? 'El correo ya está registrado.' : 'Ocurrió un error interno al registrar el usuario.',
     });
@@ -61,7 +61,7 @@ const iniciarSesion = async (peticion, respuesta) => {
       return respuesta.status(400).json({ mensaje: 'La contraseña es obligatoria.' });
     }
 
-    const consultaUsuario = `SELECT id, correo, contrasena_hash, rol FROM usuarios WHERE correo = $1 LIMIT 1;`;
+    const consultaUsuario = `SELECT id, correo, contrasena_hash, rol, nombre FROM usuarios WHERE correo = $1 LIMIT 1;`;
     const resultado = await consultarBd(consultaUsuario, [correo]);
     const usuarioEncontrado = resultado.rows[0];
 
@@ -74,32 +74,41 @@ const iniciarSesion = async (peticion, respuesta) => {
       return respuesta.status(401).json({ mensaje: 'Credenciales inválidas.' });
     }
 
+    // Reducido a 8 horas por recomendación de seguridad
     const tokenSesion = jwt.sign(
-      { id: usuarioEncontrado.id, rol: usuarioEncontrado.rol, correo: usuarioEncontrado.correo },
+      { id: usuarioEncontrado.id, rol: usuarioEncontrado.rol, correo: usuarioEncontrado.correo, nombre: usuarioEncontrado.nombre },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: '8h' }
     );
 
     respuesta.cookie('petmap_token', tokenSesion, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'Strict',
-      maxAge: 24 * 60 * 60 * 1000
+      maxAge: 8 * 60 * 60 * 1000 // 8 horas
     });
 
     return respuesta.status(200).json({
       mensaje: 'Inicio de sesión exitoso.',
-      usuario: { id: usuarioEncontrado.id, correo: usuarioEncontrado.correo, rol: usuarioEncontrado.rol },
+      usuario: { id: usuarioEncontrado.id, correo: usuarioEncontrado.correo, rol: usuarioEncontrado.rol, nombre: usuarioEncontrado.nombre },
     });
   } catch (error) {
+    console.error(error);
     return respuesta.status(500).json({ mensaje: 'Ocurrió un error interno al iniciar sesión.' });
   }
+};
+
+// NUEVO: Endpoint para que el Frontend verifique la sesión de forma segura
+const obtenerSesionActual = (peticion, respuesta) => {
+  if (!peticion.usuario) {
+    return respuesta.status(401).json({ mensaje: 'No hay sesión activa.' });
+  }
+  return respuesta.status(200).json({ usuario: peticion.usuario });
 };
 
 const cerrarSesion = async (peticion, respuesta) => {
   const token = peticion.cookies?.petmap_token;
   
-  // Solución ARCH-001: Agregamos el token a la lista negra
   if (token) {
     try {
       const consultaBloqueo = `INSERT INTO tokens_bloqueados (token) VALUES ($1) ON CONFLICT DO NOTHING;`;
@@ -125,7 +134,6 @@ const solicitarRecuperacion = async (peticion, respuesta) => {
     }
 
     const tokenRecuperacionPlano = crypto.randomBytes(32).toString('hex');
-    // Solución SEC-003: Ciframos el token con SHA-256 antes de guardarlo en BD
     const tokenRecuperacionHash = crypto.createHash('sha256').update(tokenRecuperacionPlano).digest('hex');
     const fechaExpiracion = new Date(Date.now() + 3600000); 
 
@@ -136,15 +144,14 @@ const solicitarRecuperacion = async (peticion, respuesta) => {
       RETURNING id, correo;
     `;
     
-    const resultado = await consultarBd(consultaActualizarToken, [tokenRecuperacionHash, fechaExpiracion, correo]);
+    await consultarBd(consultaActualizarToken, [tokenRecuperacionHash, fechaExpiracion, correo]);
 
-    // Aquí en un entorno real enviaríamos el correo con 'tokenRecuperacionPlano'.
     return respuesta.status(200).json({ 
       mensaje: 'Si el correo está registrado, se enviarán las instrucciones.' 
     });
 
   } catch (error) {
-    return respuesta.status(500).json({ mensaje: 'Ocurrió un error al procesar la solicitud de recuperación.' });
+    return respuesta.status(500).json({ mensaje: 'Ocurrió un error al procesar la solicitud.' });
   }
 };
 
@@ -163,7 +170,6 @@ const restablecerContrasena = async (peticion, respuesta) => {
       });
     }
 
-    // Hasheamos el token recibido para compararlo con la BD
     const tokenHashBuscado = crypto.createHash('sha256').update(token).digest('hex');
 
     const consultaBuscarToken = `
@@ -194,6 +200,7 @@ const restablecerContrasena = async (peticion, respuesta) => {
 module.exports = { 
   registrarUsuario, 
   iniciarSesion, 
+  obtenerSesionActual,
   cerrarSesion, 
   solicitarRecuperacion, 
   restablecerContrasena 

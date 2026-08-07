@@ -1,3 +1,4 @@
+// src/routes/mascotas.routes.js
 const { Router } = require('express');
 const multer = require('multer');
 const rateLimit = require('express-rate-limit');
@@ -6,7 +7,6 @@ const {
   registrarMascota, 
   obtenerMascotasPerdidas, 
   obtenerMisMascotas,
-  buscarMascotasPorNombre, 
   obtenerPerfilPublico, 
   verificarAccesoMascota,
   cambiarEstadoMascota, 
@@ -16,25 +16,22 @@ const { verificarToken } = require('../middlewares/auth.middleware');
 
 const rutasMascotas = Router();
 
-// Límite generoso para lectura pública del mapa, pero bloquea bots agresivos
 const limitePeticionesPublicas = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutos
+  windowMs: 10 * 60 * 1000,
   limit: 250,
   standardHeaders: true,
   legacyHeaders: false,
   message: { mensaje: 'Demasiadas peticiones detectadas. Por favor, intenta de nuevo más tarde.' }
 });
 
-// Límite estricto para subida de fotos (evita llenar el servidor con basura)
 const limiteSubidaArchivos = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hora
+  windowMs: 60 * 60 * 1000,
   limit: 20, 
   standardHeaders: true,
   legacyHeaders: false,
   message: { mensaje: 'Límite de registros alcanzado. Para evitar spam, intenta más tarde.' }
 });
 
-// Anti-Fuerza Bruta: Máximo 5 intentos para adivinar el teléfono de un dueño
 const limiteVerificacionPrivada = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 5,
@@ -66,7 +63,6 @@ const manejarSubidaFoto = (req, res, next) => {
 rutasMascotas.post('/', verificarToken, limiteSubidaArchivos, manejarSubidaFoto, registrarMascota);
 rutasMascotas.get('/perdidas', limitePeticionesPublicas, obtenerMascotasPerdidas);
 rutasMascotas.get('/mis-mascotas', verificarToken, obtenerMisMascotas);
-rutasMascotas.get('/buscar', limitePeticionesPublicas, buscarMascotasPorNombre);
 rutasMascotas.get('/:id/publico', limitePeticionesPublicas, obtenerPerfilPublico);
 rutasMascotas.post('/:id/verificar', limiteVerificacionPrivada, verificarAccesoMascota);
 rutasMascotas.put('/:id/estado', verificarToken, cambiarEstadoMascota);

@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
   const formularioMascota = document.getElementById('formularioMascota');
   const formularioRegistroUsuario = document.getElementById('formularioRegistroUsuario');
-  const formularioBusquedaNombre = document.getElementById('formularioBusquedaNombre');
   const formularioLogin = document.getElementById('formularioLogin');
+  const formularioMemorial = document.getElementById('formularioMemorial');
   const botonesVista = document.querySelectorAll('[data-vista]');
   
   const btnNavLogin = document.getElementById('btnNavLogin');
@@ -10,32 +10,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const textoNombreUsuario = document.getElementById('textoNombreUsuario');
   const itemMenuAdmin = document.getElementById('itemMenuAdmin');
   const btnCerrarSesionGlobal = document.getElementById('btnCerrarSesionGlobal');
+  
   const formularioAdminUsuario = document.getElementById('formularioAdminUsuario');
   const tablaAdminUsuarios = document.getElementById('tablaAdminUsuarios');
   const tituloFormularioAdminUsuario = document.getElementById('tituloFormularioAdminUsuario');
   const botonGuardarUsuarioAdmin = document.getElementById('botonGuardarUsuarioAdmin');
   const btnCancelarEdicionUsuario = document.getElementById('btnCancelarEdicionUsuario');
   
-  const contenedorResultadosBusqueda = document.getElementById('contenedorResultadosBusqueda');
   const contenedorMisMascotas = document.getElementById('contenedorMisMascotas');
-  const totalResultadosBusqueda = document.getElementById('totalResultadosBusqueda');
+  const contenedorEspacioMemorial = document.getElementById('espacioMemorialMap');
+  
   const btnCambiarEstadoMascota = document.getElementById('btnCambiarEstadoMascota');
   const btnGenerarCartelBusqueda = document.getElementById('btnGenerarCartelBusqueda');
   const tablaAdminMascotas = document.getElementById('tablaAdminMascotas');
-  const qrMascotaPrivado = document.getElementById('qrMascotaPrivado');
-  const btnDescargarQRMascotaPrivada = document.getElementById('btnDescargarQRMascotaPrivada');
-  const btnImprimirQRMascotaPrivada = document.getElementById('btnImprimirQRMascotaPrivada');
-  const btnDescargarFotoMascotaPrivada = document.getElementById('btnDescargarFotoMascotaPrivada');
-  const btnImprimirQRMascotaRegistroExitoso = document.getElementById('btnImprimirQRMascotaRegistroExitoso');
+  
   const colFormularioRegistro = document.getElementById('colFormularioRegistro');
   const contenedorMapaRegistro = document.getElementById('contenedorMapaRegistro');
   const chkEstaPerdida = document.getElementById('esta_perdida');
   const modalMapaEstadoEl = document.getElementById('modalMapaEstado');
   const btnConfirmarPerdida = document.getElementById('btnConfirmarPerdida');
 
-  if (totalResultadosBusqueda) totalResultadosBusqueda.setAttribute('aria-live', 'polite');
-
   const estadoAplicacion = {
+    usuario: null,
     mascotaActual: null,
     qrPerfilActual: '',
     usuarioAdminEditandoId: null,
@@ -46,17 +42,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const normalizarMascota = (entrada) => {
     if (!entrada) return null;
     if (typeof entrada === 'string') {
-      try { return JSON.parse(entrada); } 
-      catch (error) { return null; }
+      try { return JSON.parse(entrada); } catch (error) { return null; }
     }
     return entrada;
   };
 
   const obtenerIdiomaUsuario = () => String(navigator.language || navigator.userLanguage || 'es');
-  
-  const obtenerUsuarioGuardado = () => String(localStorage.getItem('petmap_usuario') || '').trim();
-  const obtenerRolGuardado = () => String(localStorage.getItem('petmap_rol') || '').trim().toLowerCase();
-  const esRolAdmin = () => ['admin', 'superadmin'].includes(obtenerRolGuardado());
 
   const escaparHtml = (texto) => {
     return String(texto || '').replace(/[&<>"']/g, (match) => {
@@ -99,14 +90,33 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${inicialEspecie}-${inicialNombre}-${ddmmyy}-${random}`;
   };
 
+  // UX-001: Corrección de condición de carrera al imprimir
   const imprimirPlantilla = (html) => {
     const zonaImpresion = document.getElementById('zona-impresion');
     if (!zonaImpresion) return;
     zonaImpresion.innerHTML = html;
     
-    setTimeout(() => {
+    const imagenes = Array.from(zonaImpresion.getElementsByTagName('img'));
+    if (imagenes.length === 0) {
       window.print();
-    }, 150);
+      return;
+    }
+
+    let imagenesCargadas = 0;
+    const intentarImprimir = () => {
+      imagenesCargadas++;
+      if (imagenesCargadas === imagenes.length) {
+        setTimeout(() => window.print(), 100);
+      }
+    };
+
+    imagenes.forEach(img => {
+      if (img.complete) intentarImprimir();
+      else {
+        img.onload = intentarImprimir;
+        img.onerror = intentarImprimir;
+      }
+    });
   };
 
   window.addEventListener('afterprint', () => {
@@ -132,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <h1 style="color:#315a55;margin-bottom:5px;">PetMap</h1>
         <h2 style="color:#555;margin-top:0;font-size:1.2rem;">Perfil Digital de <br><strong style="font-size:2rem;color:#000;">${escaparHtml(nombreMascota) || 'Mascota'}</strong></h2>
         <img src="${escaparHtml(qrUrl)}" alt="QR" style="width:100%;max-width:300px;border-radius:10px;margin:20px 0;" />
-        <p style="color:#777;font-weight:bold;">Escanea para ver información de contacto</p>
+        <p style="color:#777;font-weight:bold;">Escanea para ver información</p>
       </div>
     `;
     imprimirPlantilla(html);
@@ -167,56 +177,36 @@ document.addEventListener('DOMContentLoaded', () => {
     imprimirPlantilla(html);
   };
 
-  const limpiarSesion = () => {
-    localStorage.removeItem('petmap_usuario');
-    localStorage.removeItem('petmap_rol');
-  };
-
-  const resetearFormularioAdminUsuario = () => {
-    estadoAplicacion.usuarioAdminEditandoId = null;
-    if (formularioAdminUsuario) {
-      formularioAdminUsuario.reset();
-      formularioAdminUsuario.dataset.enviando = 'false';
+  // SEC-002: Verificación de sesión real en backend
+  const verificarSesionBackend = async () => {
+    try {
+      const resp = await fetch('/api/auth/me');
+      if (resp.ok) {
+        const data = await resp.json();
+        estadoAplicacion.usuario = data.usuario;
+      } else {
+        estadoAplicacion.usuario = null;
+      }
+    } catch(e) {
+      estadoAplicacion.usuario = null;
     }
-    if (tituloFormularioAdminUsuario) tituloFormularioAdminUsuario.textContent = 'Crear usuario';
-    if (botonGuardarUsuarioAdmin) botonGuardarUsuarioAdmin.textContent = 'Crear usuario';
-    if (btnCancelarEdicionUsuario) btnCancelarEdicionUsuario.classList.add('d-none');
-  };
-
-  const prepararEdicionUsuarioAdmin = (usuario) => {
-    if (!formularioAdminUsuario || !usuario) return;
-    estadoAplicacion.usuarioAdminEditandoId = usuario.id;
-    formularioAdminUsuario.nombre.value = usuario.nombre || '';
-    formularioAdminUsuario.correo.value = usuario.correo || '';
-    formularioAdminUsuario.contrasena.value = '';
-    formularioAdminUsuario.rol.value = usuario.rol || 'admin';
-    if (tituloFormularioAdminUsuario) tituloFormularioAdminUsuario.textContent = 'Editar usuario';
-    if (botonGuardarUsuarioAdmin) botonGuardarUsuarioAdmin.textContent = 'Actualizar usuario';
-    if (btnCancelarEdicionUsuario) btnCancelarEdicionUsuario.classList.remove('d-none');
+    actualizarNavegacionAuth();
   };
 
   const actualizarNavegacionAuth = () => {
-    const usuarioGuardado = obtenerUsuarioGuardado();
-    const haySesionActiva = Boolean(usuarioGuardado);
-    const esAdmin = esRolAdmin();
+    const haySesionActiva = Boolean(estadoAplicacion.usuario);
+    const esAdmin = haySesionActiva && ['admin', 'superadmin'].includes(estadoAplicacion.usuario.rol);
 
     if (btnNavLogin) btnNavLogin.classList.toggle('d-none', haySesionActiva);
     if (menuUsuarioLogueado) menuUsuarioLogueado.classList.toggle('d-none', !haySesionActiva);
-    if (textoNombreUsuario) textoNombreUsuario.textContent = usuarioGuardado || 'Mi Cuenta';
+    if (textoNombreUsuario) textoNombreUsuario.textContent = estadoAplicacion.usuario?.nombre || 'Mi Cuenta';
     if (itemMenuAdmin) itemMenuAdmin.classList.toggle('d-none', !esAdmin);
   };
 
   const redirigirLoginPorSesionInvalida = () => {
-    limpiarSesion();
+    estadoAplicacion.usuario = null;
     actualizarNavegacionAuth();
     mostrarVista('login');
-  };
-
-  const actualizarURLHistorial = (vista) => {
-    const rutaActual = window.location.pathname.split('/').filter(Boolean)[0] || 'inicio';
-    if (rutaActual !== vista) {
-        window.history.pushState({ vista }, '', `/${vista === 'inicio' ? '' : vista}`);
-    }
   };
 
   const mostrarVista = (vista, empujarEstado = true) => {
@@ -225,10 +215,10 @@ document.addEventListener('DOMContentLoaded', () => {
       bootstrap.Collapse.getInstance(navbarCollapse)?.hide();
     }
 
-    const vistasValidas = ['inicio', 'registro', 'registro-usuario', 'busqueda', 'buscar-lista', 'login', 'mis-mascotas', 'admin', 'registro-exitoso', 'perfil-publico', 'perfil-privado', 'boletin-contacto'];
+    const vistasValidas = ['inicio', 'registro', 'registro-usuario', 'busqueda', 'login', 'mis-mascotas', 'admin', 'registro-exitoso', 'perfil-publico', 'perfil-privado', 'boletin-contacto', 'memorial'];
     
     const vistasProtegidas = ['mis-mascotas', 'admin', 'registro-exitoso', 'perfil-privado', 'boletin-contacto', 'registro'];
-    if (vistasProtegidas.includes(vista) && !obtenerUsuarioGuardado()) {
+    if (vistasProtegidas.includes(vista) && !estadoAplicacion.usuario) {
         return redirigirLoginPorSesionInvalida();
     }
 
@@ -245,33 +235,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (empujarEstado) {
-      actualizarURLHistorial(vista);
+      const rutaActual = window.location.pathname.split('/').filter(Boolean)[0] || 'inicio';
+      if (rutaActual !== vista) {
+        window.history.pushState({ vista }, '', `/${vista === 'inicio' ? '' : vista}`);
+      }
     }
     
-    // UX Scroll: Hacer scroll automático hacia arriba al cambiar de vista
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     setTimeout(() => {
       if (vista === 'registro') sincronizarMapaRegistro();
       if (vista === 'busqueda') {
-        if (window.petmapMapas && window.petmapMapas.inicializarMapaBusqueda) {
-          window.petmapMapas.inicializarMapaBusqueda();
-          window.petmapMapas.cargarMascotasPerdidas();
-        }
+        window.petmapMapas?.inicializarMapaBusqueda?.();
+        window.petmapMapas?.cargarMascotasPerdidas?.();
       }
     }, 300);
 
-    if (vista === 'admin') {
-      cargarMascotasAdmin();
-      cargarUsuariosAdmin();
-    }
+    if (vista === 'admin') { cargarMascotasAdmin(); cargarUsuariosAdmin(); }
     if (vista === 'mis-mascotas') cargarMisMascotas();
+    if (vista === 'memorial') cargarMemoriales();
   };
 
   window.addEventListener('popstate', (e) => {
     const segmentoURL = window.location.pathname.split('/').filter(Boolean)[0];
-    const rutaSolicitada = e.state?.vista || segmentoURL || 'inicio';
-    mostrarVista(rutaSolicitada, false);
+    mostrarVista(e.state?.vista || segmentoURL || 'inicio', false);
   });
 
   const establecerCoordenadas = (latitud, longitud) => {
@@ -282,42 +269,130 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const sincronizarMapaRegistro = () => {
-    if (!contenedorMapaRegistro || !chkEstaPerdida || !colFormularioRegistro) {
-      return;
-    }
-
+    if (!contenedorMapaRegistro || !chkEstaPerdida || !colFormularioRegistro) return;
     if (chkEstaPerdida.checked) {
       contenedorMapaRegistro.classList.remove('d-none');
       colFormularioRegistro.className = 'col-12 col-xl-5 transicion-panel';
       contenedorMapaRegistro.className = 'col-12 col-xl-7 transicion-panel slide-in-right';
-      
       setTimeout(() => window.petmapMapas?.inicializarMapaRegistro?.(), 450);
       return;
     }
-
     colFormularioRegistro.className = 'col-12 col-lg-8 col-xl-6 mx-auto transicion-panel';
     contenedorMapaRegistro.className = 'd-none transicion-panel';
     window.petmapMapas?.limpiarMapaRegistro?.();
   };
 
+  // ==========================================
+  // LÓGICA MEMORIAL
+  // ==========================================
+  const cargarMemoriales = async () => {
+    if (!contenedorEspacioMemorial) return;
+    try {
+      const resp = await fetch('/api/memorial');
+      const data = await resp.json();
+      renderizarEspacioMemorial(data.memoriales || []);
+    } catch(e) {
+      console.error('Error cargando memoriales', e);
+    }
+  };
+
+  const renderizarEspacioMemorial = (memoriales) => {
+    contenedorEspacioMemorial.innerHTML = '';
+    memoriales.forEach((m) => {
+      const size = Math.floor(Math.random() * (120 - 70 + 1)) + 70; 
+      const top = Math.random() * 80; 
+      const left = Math.random() * 85; 
+      const delay = Math.random() * 5; 
+      
+      const img = document.createElement('img');
+      img.src = escaparHtml(m.foto_url);
+      img.className = 'foto-flotante';
+      img.style.width = `${size}px`;
+      img.style.height = `${size}px`;
+      img.style.top = `${top}%`;
+      img.style.left = `${left}%`;
+      img.style.animationDelay = `${delay}s`;
+      img.alt = escaparHtml(m.nombre);
+      
+      img.onclick = () => abrirModalMemorial(m);
+      contenedorEspacioMemorial.appendChild(img);
+    });
+  };
+
+  const abrirModalMemorial = (m) => {
+    document.getElementById('modalMemFoto').src = escaparHtml(m.foto_url);
+    document.getElementById('modalMemNombre').textContent = escaparHtml(m.nombre);
+    document.getElementById('modalMemFechas').textContent = `${m.fecha_nacimiento ? m.fecha_nacimiento + ' - ' : 'Hasta '}${m.fecha_fallecimiento}`;
+    document.getElementById('modalMemMensaje').textContent = escaparHtml(m.mensaje);
+    document.getElementById('modalMemContador').textContent = m.contador_veladoras;
+    
+    const btnVeladora = document.getElementById('btnEncenderVeladora');
+    btnVeladora.onclick = () => encenderVeladora(m.id, btnVeladora);
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalMemorialInfo'));
+    modal.show();
+  };
+
+  const encenderVeladora = async (id, botonElement) => {
+    try {
+      botonElement.innerHTML = '✨ Encendiendo...';
+      const resp = await fetch(`/api/memorial/${id}/veladora`, { method: 'POST' });
+      if(!resp.ok) throw new Error('Error al encender');
+      const data = await resp.json();
+      
+      document.getElementById('modalMemContador').textContent = data.veladoras;
+      botonElement.innerHTML = '🕯️ Veladora Encendida';
+      botonElement.classList.add('veladora-activa');
+      
+      crearParticulaChispa(botonElement);
+    } catch(e) {
+      botonElement.innerHTML = '🕯️ Intentar de nuevo';
+    }
+  };
+
+  const crearParticulaChispa = (elemento) => {
+    const rect = elemento.getBoundingClientRect();
+    const chispa = document.createElement('div');
+    chispa.className = 'chispa-animacion';
+    chispa.style.left = `${rect.left + rect.width / 2}px`;
+    chispa.style.top = `${rect.top}px`;
+    document.body.appendChild(chispa);
+    setTimeout(() => chispa.remove(), 1000);
+  };
+
+  if (formularioMemorial) {
+    formularioMemorial.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btnSubmitMemorial');
+      alternarBotonCarga(btn, true, 'Registrar Homenaje');
+      
+      try {
+        const formData = new FormData(formularioMemorial);
+        const resp = await fetch('/api/memorial', { method: 'POST', body: formData });
+        if(!resp.ok) throw new Error('Error al registrar memorial');
+        
+        Swal.fire({ icon: 'success', title: 'Homenaje creado', text: 'Tu mascota ahora descansa aquí.', background: '#1a1c20', color: '#fff' });
+        bootstrap.Modal.getInstance(document.getElementById('modalCrearMemorial'))?.hide();
+        formularioMemorial.reset();
+        cargarMemoriales();
+      } catch(e) {
+        Swal.fire({ icon: 'error', title: 'Error', text: e.message });
+      } finally {
+        alternarBotonCarga(btn, false, 'Registrar Homenaje');
+      }
+    });
+  }
+
+  // ==========================================
+  // LÓGICA CORE (Admin, Mascotas, etc.)
+  // ==========================================
   const ejecutarPeticionEstado = async (id, telefono, direccion, estaPerdida, latitud, longitud, callbackExito) => {
     try {
-      const payload = {
-        telefono_dueno: telefono,
-        direccion_dueno: direccion,
-        esta_perdida: estaPerdida,
-      };
-
-      if (latitud != null && longitud != null) {
-        payload.latitud = latitud;
-        payload.longitud = longitud;
-      }
+      const payload = { telefono_dueno: telefono, direccion_dueno: direccion, esta_perdida: estaPerdida };
+      if (latitud != null && longitud != null) { payload.latitud = latitud; payload.longitud = longitud; }
 
       const respuesta = await fetch(`/api/mascotas/${id}/estado`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload),
       });
 
       const datos = await respuesta.json();
@@ -339,7 +414,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (nuevoEstado && modalMapaEstadoEl) {
       const modal = bootstrap.Modal.getOrCreateInstance(modalMapaEstadoEl);
-
       const telGuardado = String(mascota.telefono_dueno || '');
       const partesTel = telGuardado.split(' ');
       const telefonoEstado = document.getElementById('telefonoEstado');
@@ -363,25 +437,12 @@ document.addEventListener('DOMContentLoaded', () => {
           const telefono = String(document.getElementById('telefonoEstado')?.value || '').trim();
           const direccion = String(document.getElementById('direccionEstado')?.value || '').trim();
 
-          if (!telefono || !direccion) {
-            Swal.fire('Faltan datos', 'El teléfono y la dirección son obligatorios.', 'warning');
-            return;
-          }
-
-          // FE-001: Validación estricta con expresión regular para el teléfono numérico
-          if (!/^\d{10}$/.test(telefono)) {
-            Swal.fire('Teléfono inválido', 'El número debe contener exactamente 10 dígitos numéricos.', 'warning');
-            return;
-          }
-
-          if (latitud == null || longitud == null) {
-            Swal.fire('Error', 'Selecciona la zona en el mapa.', 'error');
-            return;
-          }
+          if (!telefono || !direccion) return Swal.fire('Faltan datos', 'El teléfono y la dirección son obligatorios.', 'warning');
+          if (!/^\d{10}$/.test(telefono)) return Swal.fire('Teléfono inválido', 'El número debe contener exactamente 10 dígitos numéricos.', 'warning');
+          if (latitud == null || longitud == null) return Swal.fire('Error', 'Selecciona la zona en el mapa.', 'error');
 
           alternarBotonCarga(btnConfirmarPerdida, true);
           const telefonoFinal = `+52 ${telefono}`;
-          
           await ejecutarPeticionEstado(mascota.id, telefonoFinal, direccion, true, latitud, longitud, callbackExito);
           alternarBotonCarga(btnConfirmarPerdida, false, 'Reportar Extravío');
           modal.hide();
@@ -389,7 +450,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       return;
     }
-
     await ejecutarPeticionEstado(mascota.id, mascota.telefono_dueno, mascota.direccion_dueno, false, null, null, callbackExito);
   };
 
@@ -397,11 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const respuesta = await fetch('/api/mascotas/buscar?q=', { credentials: 'include' });
       const datos = await respuesta.json();
-      
-      if (!respuesta.ok) {
-        if (respuesta.status === 401 || respuesta.status === 403) return redirigirLoginPorSesionInvalida();
-        throw new Error(datos.mensaje || 'Error al cargar panel.');
-      }
+      if (!respuesta.ok) throw new Error(datos.mensaje || 'Error al cargar panel.');
 
       const mascotas = Array.isArray(datos.mascotas) ? datos.mascotas : [];
       tablaAdminMascotas.innerHTML = '';
@@ -426,9 +482,8 @@ document.addEventListener('DOMContentLoaded', () => {
           fragment.appendChild(tr);
       });
       tablaAdminMascotas.appendChild(fragment);
-
     } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error Admin', text: error.message });
+      console.log('Admin:', error);
     }
   };
 
@@ -436,16 +491,12 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const respuesta = await fetch('/api/usuarios?limit=100', { credentials: 'include' });
       const datos = await respuesta.json();
-
-      if (!respuesta.ok) {
-        if (respuesta.status === 401 || respuesta.status === 403) return redirigirLoginPorSesionInvalida();
-        throw new Error(datos.mensaje || 'Error al cargar usuarios.');
-      }
+      if (!respuesta.ok) throw new Error('Error al cargar usuarios.');
 
       const usuarios = Array.isArray(datos.usuarios) ? datos.usuarios : [];
       if (!tablaAdminUsuarios) return;
-
       tablaAdminUsuarios.innerHTML = '';
+
       if (usuarios.length === 0) {
           tablaAdminUsuarios.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay usuarios registrados.</td></tr>';
           return;
@@ -468,17 +519,32 @@ document.addEventListener('DOMContentLoaded', () => {
           fragment.appendChild(tr);
       });
       tablaAdminUsuarios.appendChild(fragment);
+    } catch (error) {}
+  };
 
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error Admin', text: error.message });
-    }
+  const resetearFormularioAdminUsuario = () => {
+    estadoAplicacion.usuarioAdminEditandoId = null;
+    if (formularioAdminUsuario) { formularioAdminUsuario.reset(); formularioAdminUsuario.dataset.enviando = 'false'; }
+    if (tituloFormularioAdminUsuario) tituloFormularioAdminUsuario.textContent = 'Crear usuario';
+    if (botonGuardarUsuarioAdmin) botonGuardarUsuarioAdmin.textContent = 'Crear usuario';
+    if (btnCancelarEdicionUsuario) btnCancelarEdicionUsuario.classList.add('d-none');
+  };
+
+  const prepararEdicionUsuarioAdmin = (usuario) => {
+    if (!formularioAdminUsuario || !usuario) return;
+    estadoAplicacion.usuarioAdminEditandoId = usuario.id;
+    formularioAdminUsuario.nombre.value = usuario.nombre || '';
+    formularioAdminUsuario.correo.value = usuario.correo || '';
+    formularioAdminUsuario.contrasena.value = '';
+    formularioAdminUsuario.rol.value = usuario.rol || 'admin';
+    if (tituloFormularioAdminUsuario) tituloFormularioAdminUsuario.textContent = 'Editar usuario';
+    if (botonGuardarUsuarioAdmin) botonGuardarUsuarioAdmin.textContent = 'Actualizar usuario';
+    if (btnCancelarEdicionUsuario) btnCancelarEdicionUsuario.classList.remove('d-none');
   };
 
   const guardarUsuarioAdmin = async (evento) => {
     evento.preventDefault();
-    if (!formularioAdminUsuario) return;
-    
-    if (formularioAdminUsuario.dataset.enviando === 'true') return;
+    if (!formularioAdminUsuario || formularioAdminUsuario.dataset.enviando === 'true') return;
 
     const payload = {
       nombre: String(formularioAdminUsuario.nombre.value || '').trim(),
@@ -487,9 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const contrasena = String(formularioAdminUsuario.contrasena.value || '').trim();
-    if (!estadoAplicacion.usuarioAdminEditandoId || contrasena) {
-      payload.contrasena = contrasena;
-    }
+    if (!estadoAplicacion.usuarioAdminEditandoId || contrasena) payload.contrasena = contrasena;
 
     formularioAdminUsuario.dataset.enviando = 'true';
     alternarBotonCarga(botonGuardarUsuarioAdmin, true);
@@ -498,14 +562,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const esEdicion = Boolean(estadoAplicacion.usuarioAdminEditandoId);
       const respuesta = await fetch(
         esEdicion ? `/api/usuarios/${estadoAplicacion.usuarioAdminEditandoId}` : '/api/usuarios',
-        {
-          method: esEdicion ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify(payload),
-        }
+        { method: esEdicion ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) }
       );
-
       const datos = await respuesta.json();
       if (!respuesta.ok) throw new Error(datos.mensaje || 'No fue posible guardar el usuario.');
 
@@ -513,53 +571,29 @@ document.addEventListener('DOMContentLoaded', () => {
       resetearFormularioAdminUsuario();
       Swal.fire({ icon: 'success', title: datos.mensaje || 'Usuario guardado', timer: 1200, showConfirmButton: false });
       cargarUsuariosAdmin();
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'No se pudo guardar', text: error.message });
-    } finally {
-      formularioAdminUsuario.dataset.enviando = 'false';
-      alternarBotonCarga(botonGuardarUsuarioAdmin, false, 'Crear usuario');
-    }
+    } catch (error) { Swal.fire({ icon: 'error', title: 'Error', text: error.message }); } 
+    finally { formularioAdminUsuario.dataset.enviando = 'false'; alternarBotonCarga(botonGuardarUsuarioAdmin, false, 'Crear usuario'); }
   };
 
   const eliminarUsuarioAdmin = async (idUsuario) => {
-    const conf = await Swal.fire({
-      title: '¿Eliminar usuario?',
-      text: 'Esta acción no se puede deshacer.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Eliminar',
-    });
-
+    const conf = await Swal.fire({ title: '¿Eliminar?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Eliminar' });
     if (!conf.isConfirmed) return;
-
     try {
       const respuesta = await fetch(`/api/usuarios/${idUsuario}`, { method: 'DELETE', credentials: 'include' });
-      const datos = await respuesta.json();
-
-      if (!respuesta.ok) throw new Error(datos.mensaje || 'No fue posible eliminar el usuario.');
-
-      Swal.fire({ icon: 'success', title: 'Usuario eliminado', timer: 1100, showConfirmButton: false });
+      if (!respuesta.ok) throw new Error('No fue posible eliminar el usuario.');
+      Swal.fire({ icon: 'success', title: 'Eliminado', timer: 1100, showConfirmButton: false });
       cargarUsuariosAdmin();
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error', text: error.message });
-    }
+    } catch (error) { Swal.fire('Error', error.message, 'error'); }
   };
 
   if (tablaAdminUsuarios) {
     tablaAdminUsuarios.addEventListener('click', (evento) => {
       const boton = evento.target.closest('[data-accion-usuario]');
       if (!boton) return;
-      const accion = boton.dataset.accionUsuario;
-
-      if (accion === 'editar' && boton.dataset.usuario) {
-        prepararEdicionUsuarioAdmin(JSON.parse(decodeURIComponent(boton.dataset.usuario)));
-      }
-      if (accion === 'eliminar' && boton.dataset.idUsuario) {
-        eliminarUsuarioAdmin(boton.dataset.idUsuario);
-      }
+      if (boton.dataset.accionUsuario === 'editar') prepararEdicionUsuarioAdmin(JSON.parse(decodeURIComponent(boton.dataset.usuario)));
+      if (boton.dataset.accionUsuario === 'eliminar') eliminarUsuarioAdmin(boton.dataset.idUsuario);
     });
   }
-
   if (formularioAdminUsuario) formularioAdminUsuario.addEventListener('submit', guardarUsuarioAdmin);
   if (btnCancelarEdicionUsuario) btnCancelarEdicionUsuario.addEventListener('click', resetearFormularioAdminUsuario);
 
@@ -567,17 +601,13 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const respuesta = await fetch('/api/mascotas/mis-mascotas', { credentials: 'include' });
       const datos = await respuesta.json();
-
-      if (!respuesta.ok) {
-        if (respuesta.status === 401 || respuesta.status === 403) return redirigirLoginPorSesionInvalida();
-        throw new Error(datos.mensaje || 'Error al cargar.');
-      }
+      if (!respuesta.ok) throw new Error('Error al cargar.');
 
       const mascotas = Array.isArray(datos.mascotas) ? datos.mascotas : [];
       contenedorMisMascotas.innerHTML = '';
       
       if (mascotas.length === 0) {
-          contenedorMisMascotas.innerHTML = '<div class="col-12 text-center text-muted p-5 bg-white rounded-4 border">No tienes mascotas registradas.</div>';
+          contenedorMisMascotas.innerHTML = '<div class="col-12 text-center p-5 bg-white rounded-4 border">No tienes mascotas registradas.</div>';
           return;
       }
 
@@ -602,34 +632,25 @@ document.addEventListener('DOMContentLoaded', () => {
           fragment.appendChild(div);
       });
       contenedorMisMascotas.appendChild(fragment);
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Error', text: error.message });
-    }
+    } catch (error) {}
   };
 
   const borrarMascotaAdmin = async (idMascota) => {
-    const conf = await Swal.fire({ title: '¿Borrar mascota?', text: 'No se puede deshacer.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Borrar' });
+    const conf = await Swal.fire({ title: '¿Borrar mascota?', icon: 'warning', showCancelButton: true });
     if (!conf.isConfirmed) return;
-
     try {
       const resp = await fetch(`/api/mascotas/${idMascota}`, { method: 'DELETE', credentials: 'include' });
       if (!resp.ok) throw new Error('No fue posible borrar.');
       Swal.fire('Eliminada', '', 'success');
       cargarMascotasAdmin();
       cargarMisMascotas();
-    } catch (e) {
-      Swal.fire('Error', e.message, 'error');
-    }
+    } catch (e) {}
   };
   window.borrarMascotaAdmin = borrarMascotaAdmin;
 
   const renderFotoMascota = (elemento, fotoUrl) => {
     if (!elemento) return;
-    if (fotoUrl) {
-      elemento.src = escaparHtml(fotoUrl);
-      elemento.classList.remove('d-none');
-      return;
-    }
+    if (fotoUrl) { elemento.src = escaparHtml(fotoUrl); elemento.classList.remove('d-none'); return; }
     elemento.removeAttribute('src');
     elemento.classList.add('d-none');
   };
@@ -640,247 +661,128 @@ document.addEventListener('DOMContentLoaded', () => {
       const respuesta = await fetch(`/api/mascotas/${encodeURIComponent(idMascota)}/publico`);
       const datos = await respuesta.json();
       if (!respuesta.ok) throw new Error(datos.mensaje || 'No fue posible cargar el perfil público.');
-
       mostrarPerfilPublico(datos.mascota);
       mostrarVista('perfil-publico');
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Perfil no disponible', text: error.message });
-    }
+    } catch (error) { Swal.fire('Error', error.message, 'error'); }
   };
 
   const mostrarRegistroExitoso = (respuesta) => {
     const mascota = normalizarMascota(respuesta?.mascota || respuesta);
-    const foto = document.getElementById('fotoMascotaRegistroExitoso');
-    const nombre = document.getElementById('nombreMascotaRegistroExitoso');
-    const qr = document.getElementById('qrMascotaRegistroExitoso');
-    const botonIrPerfil = document.getElementById('btnIrPerfilMascotaRegistroExitoso');
-    const botonDescargarQR = document.getElementById('btnDescargarQRMascotaRegistroExitoso');
-    const botonImprimirQR = document.getElementById('btnImprimirQRMascotaRegistroExitoso');
-
     estadoAplicacion.mascotaActual = mascota;
     estadoAplicacion.qrPerfilActual = respuesta?.qr_perfil || respuesta?.url_perfil || '';
+    renderFotoMascota(document.getElementById('fotoMascotaRegistroExitoso'), mascota?.foto_url || respuesta?.foto_url || '');
+    if (document.getElementById('nombreMascotaRegistroExitoso')) document.getElementById('nombreMascotaRegistroExitoso').textContent = mascota?.nombre || 'Nombre';
+    const qr = document.getElementById('qrMascotaRegistroExitoso');
+    if (qr) { qr.src = escaparHtml(estadoAplicacion.qrPerfilActual || ''); qr.alt = `QR de ${escaparHtml(mascota?.nombre)}`; }
 
-    renderFotoMascota(foto, mascota?.foto_url || respuesta?.foto_url || '');
-
-    if (nombre) nombre.textContent = mascota?.nombre || 'Nombre';
-    if (qr) {
-      qr.src = escaparHtml(estadoAplicacion.qrPerfilActual || '');
-      qr.alt = `QR de ${escaparHtml(mascota?.nombre || 'la mascota')}`;
-    }
-
-    if (botonDescargarQR) {
-      botonDescargarQR.onclick = () => {
-        descargarArchivoDesdeUrl(estadoAplicacion.qrPerfilActual, `${String(mascota?.nombre || 'qr').replace(/\s+/g, '_')}.png`);
-      };
-    }
-
-    if (botonImprimirQR) {
-      botonImprimirQR.onclick = () => {
-        imprimirQrMascota('QR de registro', estadoAplicacion.qrPerfilActual, mascota?.nombre || 'Mascota');
-      };
-    }
-
+    const botonDescargarQR = document.getElementById('btnDescargarQRMascotaRegistroExitoso');
+    if (botonDescargarQR) botonDescargarQR.onclick = () => descargarArchivoDesdeUrl(estadoAplicacion.qrPerfilActual, `${String(mascota?.nombre).replace(/\s+/g, '_')}.png`);
+    const botonImprimirQR = document.getElementById('btnImprimirQRMascotaRegistroExitoso');
+    if (botonImprimirQR) botonImprimirQR.onclick = () => imprimirQrMascota('QR de registro', estadoAplicacion.qrPerfilActual, mascota?.nombre);
+    
+    const botonIrPerfil = document.getElementById('btnIrPerfilMascotaRegistroExitoso');
     if (botonIrPerfil) {
-      botonIrPerfil.onclick = () => {
-        mostrarPerfilPrivado(mascota);
-        mostrarVista('perfil-privado');
-      };
+      botonIrPerfil.onclick = () => { mostrarPerfilPrivado(mascota); mostrarVista('perfil-privado'); };
     }
   };
 
   const mostrarPerfilPublico = (entradaMascota) => {
     const mascota = normalizarMascota(entradaMascota);
-    const foto = document.getElementById('fotoMascotaPublico');
-    const nombre = document.getElementById('nombreMascotaPublico');
-    const descripcion = document.getElementById('descripcionMascotaPublico');
-    const alerta = document.getElementById('alertaMascotaPerdidaPublico');
-    const botonVerContacto = document.getElementById('btnContactarDuenoPublico');
-
     estadoAplicacion.mascotaActual = mascota;
-    renderFotoMascota(foto, mascota?.foto_url || entradaMascota?.foto_url || '');
-
-    if (nombre) nombre.textContent = mascota?.nombre || 'Nombre';
-    if (descripcion) descripcion.innerHTML = escaparHtml(mascota?.descripcion || 'Sin descripción');
+    renderFotoMascota(document.getElementById('fotoMascotaPublico'), mascota?.foto_url || entradaMascota?.foto_url || '');
+    if (document.getElementById('nombreMascotaPublico')) document.getElementById('nombreMascotaPublico').textContent = mascota?.nombre || 'Nombre';
+    if (document.getElementById('descripcionMascotaPublico')) document.getElementById('descripcionMascotaPublico').innerHTML = escaparHtml(mascota?.descripcion || 'Sin descripción');
+    
+    const alerta = document.getElementById('alertaMascotaPerdidaPublico');
     if (alerta) alerta.classList.toggle('d-none', !mascota?.esta_perdida);
-
+    
+    const botonVerContacto = document.getElementById('btnContactarDuenoPublico');
     if (botonVerContacto) {
       botonVerContacto.classList.toggle('d-none', !mascota?.esta_perdida);
-      botonVerContacto.onclick = () => {
-        if (mascota) {
-          mostrarBoletinContacto(mascota);
-          mostrarVista('boletin-contacto');
-        }
-      };
+      botonVerContacto.onclick = () => { if (mascota) { mostrarBoletinContacto(mascota); mostrarVista('boletin-contacto'); } };
     }
   };
 
   const mostrarPerfilPrivado = (entradaMascota) => {
     const mascota = normalizarMascota(entradaMascota);
-    const foto = document.getElementById('fotoMascotaPrivado');
-    const nombre = document.getElementById('nombreMascotaPrivado');
-    const descripcion = document.getElementById('descripcionMascotaPrivado');
-    const telefono = document.getElementById('telefonoMascotaPrivado');
-    const direccion = document.getElementById('direccionMascotaPrivado');
-    const estado = document.getElementById('estadoMascotaPrivado');
-    const qr = document.getElementById('qrMascotaPrivado');
-    const botonDescargarQRPrivada = document.getElementById('btnDescargarQRMascotaPrivada');
-    const botonImprimirQRPrivada = document.getElementById('btnImprimirQRMascotaPrivada');
-    const botonDescargarFotoPrivada = document.getElementById('btnDescargarFotoMascotaPrivada');
-    const btnImprimirCredencial = document.getElementById('btnImprimirCredencial');
-
     estadoAplicacion.mascotaActual = mascota;
     estadoAplicacion.qrPerfilActual = mascota?.qr_perfil || mascota?.url_perfil || '';
+    renderFotoMascota(document.getElementById('fotoMascotaPrivado'), mascota?.foto_url || entradaMascota?.foto_url || '');
+    renderFotoMascota(document.getElementById('qrMascotaPrivado'), estadoAplicacion.qrPerfilActual);
 
-    renderFotoMascota(foto, mascota?.foto_url || entradaMascota?.foto_url || '');
-    renderFotoMascota(qr, estadoAplicacion.qrPerfilActual);
-
-    if (nombre) nombre.textContent = mascota?.nombre || 'Nombre';
-    if (descripcion) descripcion.innerHTML = escaparHtml(mascota?.descripcion || 'Sin descripción');
-    if (telefono) telefono.textContent = mascota?.telefono_dueno || 'Sin teléfono';
-    if (direccion) direccion.textContent = mascota?.direccion_dueno || 'Sin dirección';
-    if (estado) estado.textContent = `Estado actual: ${mascota?.esta_perdida ? 'Perdida' : 'Encontrada'}`;
+    if (document.getElementById('nombreMascotaPrivado')) document.getElementById('nombreMascotaPrivado').textContent = mascota?.nombre || 'Nombre';
+    if (document.getElementById('descripcionMascotaPrivado')) document.getElementById('descripcionMascotaPrivado').innerHTML = escaparHtml(mascota?.descripcion || 'Sin descripción');
+    if (document.getElementById('telefonoMascotaPrivado')) document.getElementById('telefonoMascotaPrivado').textContent = mascota?.telefono_dueno || 'Sin teléfono';
+    if (document.getElementById('direccionMascotaPrivado')) document.getElementById('direccionMascotaPrivado').textContent = mascota?.direccion_dueno || 'Sin dirección';
+    if (document.getElementById('estadoMascotaPrivado')) document.getElementById('estadoMascotaPrivado').textContent = `Estado actual: ${mascota?.esta_perdida ? 'Perdida' : 'Encontrada'}`;
 
     if (btnCambiarEstadoMascota) {
-      btnCambiarEstadoMascota.dataset.idMascota = mascota?.id || '';
-      btnCambiarEstadoMascota.dataset.estadoActual = String(Boolean(mascota?.esta_perdida));
       btnCambiarEstadoMascota.textContent = mascota?.esta_perdida ? 'Marcar como encontrada' : 'Marcar como perdida';
-      btnCambiarEstadoMascota.onclick = () => {
-        procesarCambioEstado(mascota, mascota.esta_perdida, (mascotaActualizada) => {
-          mostrarPerfilPrivado(mascotaActualizada);
-        });
-      };
+      btnCambiarEstadoMascota.onclick = () => procesarCambioEstado(mascota, mascota.esta_perdida, (mAct) => mostrarPerfilPrivado(mAct));
     }
 
     if (btnGenerarCartelBusqueda) {
       btnGenerarCartelBusqueda.onclick = () => {
         const fotoSrc = mascota?.foto_url ? escaparHtml(mascota.foto_url) : 'https://via.placeholder.com/400?text=Mascota';
-        
         imprimirPlantilla(`
           <div class="cartel-impresion">
             <div class="cartel-header">¡SE BUSCA!</div>
-            <h1 style="text-align:center;font-size:4rem;margin:10px 0;color:#2e4a45;">${escaparHtml(mascota?.nombre) || 'Nombre'}</h1>
+            <h1 style="text-align:center;font-size:4rem;margin:10px 0;color:#2e4a45;">${escaparHtml(mascota?.nombre)}</h1>
             <div style="display:flex;gap:20px;margin-top:20px;">
-              <div style="flex:1;">
-                <img src="${fotoSrc}" style="width:100%;border-radius:10px;border:4px solid #c94c4c;object-fit:cover;" />
-              </div>
+              <div style="flex:1;"><img src="${fotoSrc}" style="width:100%;border-radius:10px;border:4px solid #c94c4c;object-fit:cover;" /></div>
               <div style="flex:1;font-size:1.4rem;line-height:1.6;">
-                <p><strong>Especie/Raza:</strong> ${escaparHtml(mascota?.especie || '')} ${mascota?.raza ? '- ' + escaparHtml(mascota.raza) : ''}</p>
-                <p><strong>Señas particulares:</strong> ${escaparHtml(mascota?.descripcion || 'Sin descripción detallada.')}</p>
+                <p><strong>Especie/Raza:</strong> ${escaparHtml(mascota?.especie)} ${mascota?.raza ? '- ' + escaparHtml(mascota.raza) : ''}</p>
+                <p><strong>Señas particulares:</strong> ${escaparHtml(mascota?.descripcion || '')}</p>
                 <div style="background:#fff3f3;padding:15px;border-left:5px solid #c94c4c;margin-top:20px;">
                   <p style="margin:0;color:#c94c4c;font-weight:bold;font-size:1.2rem;">Por favor, si la ves, comunícate al:</p>
-                  <p style="margin:5px 0 0 0;font-size:2.2rem;font-weight:900;">📞 ${escaparHtml(mascota?.telefono_dueno || 'Sin teléfono')}</p>
+                  <p style="margin:5px 0 0 0;font-size:2.2rem;font-weight:900;">📞 ${escaparHtml(mascota?.telefono_dueno)}</p>
                 </div>
               </div>
-            </div>
-            <div style="background:#2e4a45;color:white;text-align:center;padding:15px;font-size:1.5rem;font-weight:bold;margin-top:30px;border-radius:10px;">
-              TU AYUDA ES IMPORTANTE PARA QUE VUELVA A CASA
             </div>
           </div>
         `);
       };
     }
 
-    if (btnImprimirCredencial) btnImprimirCredencial.onclick = () => imprimirCredencialMascota(mascota, false);
-
-    if (botonDescargarQRPrivada) {
-      botonDescargarQRPrivada.onclick = () => {
-        descargarArchivoDesdeUrl(estadoAplicacion.qrPerfilActual, `${String(mascota?.nombre || 'qr').replace(/\s+/g, '_')}.png`);
-      };
-    }
-
-    if (botonImprimirQRPrivada) {
-      botonImprimirQRPrivada.onclick = () => {
-        imprimirQrMascota('QR de la mascota', estadoAplicacion.qrPerfilActual, mascota?.nombre || 'Mascota');
-      };
-    }
-
-    if (botonDescargarFotoPrivada) {
-      botonDescargarFotoPrivada.onclick = () => {
-        descargarArchivoDesdeUrl(mascota?.foto_url || '', `${String(mascota?.nombre || 'foto').replace(/\s+/g, '_')}.jpg`);
-      };
-    }
+    if (document.getElementById('btnImprimirCredencial')) document.getElementById('btnImprimirCredencial').onclick = () => imprimirCredencialMascota(mascota, false);
+    if (document.getElementById('btnDescargarQRMascotaPrivada')) document.getElementById('btnDescargarQRMascotaPrivada').onclick = () => descargarArchivoDesdeUrl(estadoAplicacion.qrPerfilActual, `QR_${mascota.nombre}.png`);
+    if (document.getElementById('btnImprimirQRMascotaPrivada')) document.getElementById('btnImprimirQRMascotaPrivada').onclick = () => imprimirQrMascota('QR de mascota', estadoAplicacion.qrPerfilActual, mascota.nombre);
+    if (document.getElementById('btnDescargarFotoMascotaPrivada')) document.getElementById('btnDescargarFotoMascotaPrivada').onclick = () => descargarArchivoDesdeUrl(mascota.foto_url, `Foto_${mascota.nombre}.jpg`);
   };
 
   const mostrarBoletinContacto = (respuesta) => {
     const mascota = normalizarMascota(respuesta?.mascota || respuesta);
-    const foto = document.getElementById('fotoMascotaBoletin');
-    const nombre = document.getElementById('nombreMascotaBoletin');
-    const descripcion = document.getElementById('descripcionMascotaBoletin');
-    const telefono = document.getElementById('telefonoMascotaBoletin');
-    const direccion = document.getElementById('direccionMascotaBoletin');
-
     estadoAplicacion.mascotaActual = mascota;
-    renderFotoMascota(foto, mascota?.foto_url || respuesta?.foto_url || '');
-
-    if (nombre) nombre.textContent = mascota?.nombre || 'Nombre';
-    if (descripcion) descripcion.innerHTML = escaparHtml(mascota?.descripcion || 'Sin descripción');
-    if (telefono) telefono.textContent = mascota?.telefono_dueno || 'Sin teléfono';
-    if (direccion) direccion.textContent = mascota?.direccion_dueno || 'Sin dirección';
-  };
-
-  const mostrarPerfilMascota = (entradaMascota) => {
-    mostrarPerfilPrivado(entradaMascota);
+    renderFotoMascota(document.getElementById('fotoMascotaBoletin'), mascota?.foto_url || respuesta?.foto_url || '');
+    if (document.getElementById('nombreMascotaBoletin')) document.getElementById('nombreMascotaBoletin').textContent = mascota?.nombre || 'Nombre';
+    if (document.getElementById('descripcionMascotaBoletin')) document.getElementById('descripcionMascotaBoletin').innerHTML = escaparHtml(mascota?.descripcion || 'Sin descripción');
+    if (document.getElementById('telefonoMascotaBoletin')) document.getElementById('telefonoMascotaBoletin').textContent = mascota?.telefono_dueno || 'Sin teléfono';
+    if (document.getElementById('direccionMascotaBoletin')) document.getElementById('direccionMascotaBoletin').textContent = mascota?.direccion_dueno || 'Sin dirección';
   };
 
   const solicitarVerificacionMascota = async (idMascota) => {
-    const resultadoTelefono = await Swal.fire({
-      title: 'Verificar acceso',
-      text: 'Ingresa el teléfono completo asociado a la mascota.',
-      input: 'tel',
-      inputPlaceholder: '+52 3312345678',
-      showCancelButton: true,
-      confirmButtonText: 'Verificar',
-      cancelButtonText: 'Cancelar',
-    });
-
-    if (!resultadoTelefono.isConfirmed || !resultadoTelefono.value) return;
-
+    const res = await Swal.fire({ title: 'Verificar', text: 'Ingresa el teléfono asociado.', input: 'tel', showCancelButton: true });
+    if (!res.isConfirmed || !res.value) return;
     try {
-      const respuesta = await fetch(`/api/mascotas/${idMascota}/verificar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telefono_dueno: String(resultadoTelefono.value).trim() }),
+      const resp = await fetch(`/api/mascotas/${idMascota}/verificar`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ telefono_dueno: String(res.value).trim() })
       });
-
-      const datos = await respuesta.json();
-      if (!respuesta.ok) throw new Error(datos.mensaje || 'No fue posible verificar el acceso.');
-
+      const datos = await resp.json();
+      if (!resp.ok) throw new Error(datos.mensaje);
       mostrarBoletinContacto(datos);
       mostrarVista('boletin-contacto');
-    } catch (error) {
-      Swal.fire({ icon: 'error', title: 'Acceso denegado', text: error.message });
-    }
+    } catch (error) { Swal.fire('Denegado', error.message, 'error'); }
   };
 
-  const abrirPerfilDesdeMapa = async (idMascota) => {
-    await solicitarVerificacionMascota(idMascota);
-  };
+  const abrirPerfilDesdeMapa = async (idMascota) => { await solicitarVerificacionMascota(idMascota); };
 
   const abrirPerfilPublico = async (entradaMascota) => {
     const mascota = normalizarMascota(entradaMascota);
-    if (mascota?.id) {
-      mostrarPerfilPublico(mascota);
-      mostrarVista('perfil-publico');
-      return;
-    }
-
-    if (typeof entradaMascota === 'string' && entradaMascota.trim()) {
-      await cargarPerfilPublicoPorId(entradaMascota.trim());
-    }
+    if (mascota?.id) { mostrarPerfilPublico(mascota); mostrarVista('perfil-publico'); return; }
+    if (typeof entradaMascota === 'string' && entradaMascota.trim()) { await cargarPerfilPublicoPorId(entradaMascota.trim()); }
   };
 
-  window.petmapUI = {
-    mostrarVista,
-    establecerCoordenadas,
-    mostrarPerfilMascota,
-    mostrarPerfilPublico,
-    mostrarPerfilPrivado,
-    mostrarRegistroExitoso,
-    mostrarBoletinContacto,
-    actualizarNavegacionAuth,
-    abrirPerfilDesdeMapa,
-  };
-
+  window.petmapUI = { mostrarVista, establecerCoordenadas, mostrarPerfilPublico, mostrarPerfilPrivado, mostrarRegistroExitoso, mostrarBoletinContacto, actualizarNavegacionAuth, abrirPerfilDesdeMapa };
   window.abrirPerfilPublico = abrirPerfilPublico;
 
   botonesVista.forEach((boton) => {
@@ -893,9 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (formularioMascota) {
     formularioMascota.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
       if (formularioMascota.dataset.enviando === 'true') return;
-      
       const botonGuardar = document.getElementById('btnSubmitMascota');
       const formData = new FormData(formularioMascota);
       const estaPerdida = Boolean(chkEstaPerdida?.checked);
@@ -904,175 +804,80 @@ document.addEventListener('DOMContentLoaded', () => {
       const telefono = String(formData.get('telefono_dueno') || '').trim();
       const direccion = String(formData.get('direccion_dueno') || '').trim();
 
-      if (estaPerdida && (latitud == null || longitud == null)) {
-        return Swal.fire('Error', 'Debes marcar en el mapa la zona de extravío.', 'error');
-      }
-      if (estaPerdida && (!telefono || !direccion)) {
-        return Swal.fire('Error', 'Si la mascota está perdida, teléfono y dirección son obligatorios.', 'error');
-      }
+      if (estaPerdida && (latitud == null || longitud == null)) return Swal.fire('Error', 'Marca en el mapa.', 'error');
+      if (estaPerdida && (!telefono || !direccion)) return Swal.fire('Error', 'Teléfono y dirección obligatorios.', 'error');
 
       formularioMascota.dataset.enviando = 'true';
       alternarBotonCarga(botonGuardar, true, 'Guardar Mascota');
 
-      if (!estaPerdida) {
-        formData.delete('latitud');
-        formData.delete('longitud');
-      }
-
+      if (!estaPerdida) { formData.delete('latitud'); formData.delete('longitud'); }
       formData.set('telefono_dueno', formData.get('telefono_dueno') ? `${formData.get('lada')} ${formData.get('telefono_dueno')}` : '');
       formData.delete('lada');
-      if (latitud != null && longitud != null) {
-        formData.set('latitud', String(latitud));
-        formData.set('longitud', String(longitud));
-      }
+      if (latitud != null && longitud != null) { formData.set('latitud', String(latitud)); formData.set('longitud', String(longitud)); }
       formData.set('esta_perdida', String(estaPerdida));
       formData.set('idioma_registro', obtenerIdiomaUsuario());
-      formData.set('fecha_nacimiento', String(formData.get('fecha_nacimiento') || ''));
 
       try {
-        const respuesta = await fetch('/api/mascotas', { 
-          method: 'POST', 
-          credentials: 'include', 
-          body: formData 
-        });
+        const respuesta = await fetch('/api/mascotas', { method: 'POST', credentials: 'include', body: formData });
         const datos = await respuesta.json();
-        
-        if (!respuesta.ok) {
-           if (respuesta.status === 401 || respuesta.status === 403) return redirigirLoginPorSesionInvalida();
-           throw new Error(datos.mensaje);
-        }
+        if (!respuesta.ok) throw new Error(datos.mensaje);
 
         formularioMascota.reset();
         sincronizarMapaRegistro();
-        Swal.fire({ icon: 'success', title: '¡Mascota Guardada!', timer: 1500, showConfirmButton: false });
+        Swal.fire({ icon: 'success', title: '¡Guardada!', timer: 1500, showConfirmButton: false });
         mostrarRegistroExitoso(datos);
         mostrarVista('registro-exitoso');
-      } catch (error) { 
-        Swal.fire('Error', error.message, 'error'); 
-      } finally {
-        formularioMascota.dataset.enviando = 'false';
-        alternarBotonCarga(botonGuardar, false, 'Guardar Mascota');
-      }
+      } catch (error) { Swal.fire('Error', error.message, 'error'); } 
+      finally { formularioMascota.dataset.enviando = 'false'; alternarBotonCarga(botonGuardar, false, 'Guardar Mascota'); }
     });
   }
 
   if (formularioRegistroUsuario) {
     formularioRegistroUsuario.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
       if (formularioRegistroUsuario.dataset.enviando === 'true') return;
       formularioRegistroUsuario.dataset.enviando = 'true';
-
       const botonRegistro = document.getElementById('btnSubmitRegistroUsuario');
       alternarBotonCarga(botonRegistro, true, 'Registrarme');
-
       try {
         const respuesta = await fetch('/api/auth/registro', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            nombre: formularioRegistroUsuario.nombre.value, 
-            correo: formularioRegistroUsuario.correo.value, 
-            contrasena: formularioRegistroUsuario.contrasena.value 
-          }),
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nombre: formularioRegistroUsuario.nombre.value, correo: formularioRegistroUsuario.correo.value, contrasena: formularioRegistroUsuario.contrasena.value }),
         });
         const datos = await respuesta.json();
         if (!respuesta.ok) throw new Error(datos.mensaje);
-
         formularioRegistroUsuario.reset();
-        Swal.fire({ icon: 'success', title: '¡Cuenta Creada!', text: 'Por favor inicia sesión.' });
+        Swal.fire({ icon: 'success', title: '¡Cuenta Creada!' });
         mostrarVista('login');
-      } catch (error) { 
-        Swal.fire({ icon: 'error', title: 'Error', text: error.message }); 
-      } finally {
-        formularioRegistroUsuario.dataset.enviando = 'false';
-        alternarBotonCarga(botonRegistro, false, 'Registrarme');
-      }
+      } catch (error) { Swal.fire('Error', error.message, 'error'); } 
+      finally { formularioRegistroUsuario.dataset.enviando = 'false'; alternarBotonCarga(botonRegistro, false, 'Registrarme'); }
     });
   }
 
   if (formularioLogin) {
     formularioLogin.addEventListener('submit', async (e) => {
       e.preventDefault();
-      
       if (formularioLogin.dataset.enviando === 'true') return;
       formularioLogin.dataset.enviando = 'true';
-
       const botonLogin = document.getElementById('btnSubmitLogin');
       alternarBotonCarga(botonLogin, true, 'Iniciar Sesión');
-
       try {
         const respuesta = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ correo: formularioLogin.correo.value, contrasena: formularioLogin.contrasena.value }),
         });
         const datos = await respuesta.json();
         if (!respuesta.ok) throw new Error(datos.mensaje);
 
-        localStorage.setItem('petmap_usuario', datos.usuario?.correo);
-        localStorage.setItem('petmap_rol', datos.usuario?.rol || '');
+        estadoAplicacion.usuario = datos.usuario;
         actualizarNavegacionAuth();
         formularioLogin.reset();
-
         Swal.fire({ icon: 'success', title: 'Bienvenido', timer: 1500, showConfirmButton: false });
         
         if (['admin', 'superadmin'].includes(datos.usuario?.rol)) mostrarVista('admin');
         else mostrarVista('mis-mascotas');
-
-      } catch (error) { 
-        Swal.fire({ icon: 'error', title: 'Acceso fallido', text: error.message }); 
-      } finally {
-        formularioLogin.dataset.enviando = 'false';
-        alternarBotonCarga(botonLogin, false, 'Iniciar Sesión');
-      }
-    });
-  }
-
-  if (formularioBusquedaNombre) {
-    formularioBusquedaNombre.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      
-      if (formularioBusquedaNombre.dataset.enviando === 'true') return;
-
-      const query = document.getElementById('busquedaNombre').value;
-      if(!query) return;
-
-      formularioBusquedaNombre.dataset.enviando = 'true';
-      const botonBusqueda = document.getElementById('btnSubmitBuscarLista');
-      alternarBotonCarga(botonBusqueda, true, 'Buscar');
-
-      try {
-        const resp = await fetch(`/api/mascotas/buscar?q=${encodeURIComponent(query)}`);
-        const datos = await resp.json();
-        
-        document.getElementById('totalResultadosBusqueda').textContent = `${datos.mascotas?.length || 0} resultados`;
-        contenedorResultadosBusqueda.innerHTML = '';
-        
-        if (!datos.mascotas?.length) {
-            contenedorResultadosBusqueda.innerHTML = '<p class="text-muted text-center w-100 py-3">No hay coincidencias</p>';
-            return;
-        }
-
-        const fragment = document.createDocumentFragment();
-        datos.mascotas.forEach(m => {
-          const div = document.createElement('div');
-          div.className = 'col-12 col-md-6';
-          div.innerHTML = `
-            <div class="tarjeta-suave p-3 h-100 shadow-sm border-0 d-flex flex-column resultado-card">
-              <h4 class="h5 fw-bold">${escaparHtml(m.nombre)}</h4>
-              <p class="text-muted small mb-3 flex-grow-1">${escaparHtml(m.raza || m.especie)}</p>
-              <button class="btn btn-outline-dark btn-sm w-100 fw-bold" onclick="window.abrirPerfilPublico('${encodeURIComponent(JSON.stringify(m))}')">Ayudar</button>
-            </div>
-          `;
-          fragment.appendChild(div);
-        });
-        contenedorResultadosBusqueda.appendChild(fragment);
-      } finally {
-        formularioBusquedaNombre.dataset.enviando = 'false';
-        alternarBotonCarga(botonBusqueda, false, 'Buscar');
-      }
+      } catch (error) { Swal.fire('Acceso fallido', error.message, 'error'); } 
+      finally { formularioLogin.dataset.enviando = 'false'; alternarBotonCarga(botonLogin, false, 'Iniciar Sesión'); }
     });
   }
 
@@ -1081,37 +886,20 @@ document.addEventListener('DOMContentLoaded', () => {
       const btn = e.target.closest('[data-accion]');
       if (!btn) return;
       const id = btn.dataset.idMascota;
-
-      if (btn.dataset.accion === 'perfil' && btn.dataset.mascota) {
-        mostrarPerfilPrivado(JSON.parse(decodeURIComponent(btn.dataset.mascota)));
-        mostrarVista('perfil-privado');
-        return;
-      }
-      
+      if (btn.dataset.accion === 'perfil') mostrarPerfilPrivado(JSON.parse(decodeURIComponent(btn.dataset.mascota))), mostrarVista('perfil-privado');
       if (btn.dataset.accion === 'eliminar') borrarMascotaAdmin(id);
-      if (btn.dataset.accion === 'cambiar-estado') {
-        procesarCambioEstado(
-          { id, telefono_dueno: btn.dataset.telefonoDueno, direccion_dueno: btn.dataset.direccionDueno },
-          btn.dataset.estadoActual === 'true',
-          () => cargarMisMascotas(),
-        );
-      }
+      if (btn.dataset.accion === 'cambiar-estado') procesarCambioEstado({ id, telefono_dueno: btn.dataset.telefonoDueno }, btn.dataset.estadoActual === 'true', () => cargarMisMascotas());
     });
   }
 
-  if (chkEstaPerdida) {
-    chkEstaPerdida.addEventListener('change', sincronizarMapaRegistro);
-  }
-
+  if (chkEstaPerdida) chkEstaPerdida.addEventListener('change', sincronizarMapaRegistro);
   const filtroAdminMascotas = document.getElementById('filtroAdminMascotas');
   if (filtroAdminMascotas) {
     filtroAdminMascotas.addEventListener('keyup', (e) => {
       const texto = e.target.value.toLowerCase();
       const filas = tablaAdminMascotas?.getElementsByTagName('tr') || [];
-
       Array.from(filas).forEach((fila) => {
-        const nombreMascota = fila.cells[0]?.textContent.toLowerCase() || '';
-        fila.style.display = nombreMascota.includes(texto) ? '' : 'none';
+        fila.style.display = (fila.cells[0]?.textContent.toLowerCase() || '').includes(texto) ? '' : 'none';
       });
     });
   }
@@ -1120,47 +908,28 @@ document.addEventListener('DOMContentLoaded', () => {
   if (formCredencialInvitado) {
     formCredencialInvitado.addEventListener('submit', (e) => {
       e.preventDefault();
-
       const archivoFoto = document.getElementById('invFoto')?.files?.[0] || null;
       const mostrarCredencial = (fotoUrl = '') => {
         const mascotaInvitada = {
-          nombre: document.getElementById('invNombre')?.value,
-          especie: document.getElementById('invEspecie')?.value,
-          raza: document.getElementById('invRaza')?.value,
-          fecha_nacimiento: document.getElementById('invFechaNac')?.value,
-          dueno: document.getElementById('invDueno')?.value,
-          telefono: document.getElementById('invTelefono')?.value,
-          foto_url: fotoUrl,
+          nombre: document.getElementById('invNombre')?.value, especie: document.getElementById('invEspecie')?.value, raza: document.getElementById('invRaza')?.value,
+          fecha_nacimiento: document.getElementById('invFechaNac')?.value, dueno: document.getElementById('invDueno')?.value, telefono: document.getElementById('invTelefono')?.value, foto_url: fotoUrl,
         };
-
-        const modalEl = document.getElementById('modalCredencialInvitado');
-        const modal = modalEl ? bootstrap.Modal.getInstance(modalEl) : null;
-
-        if (modal) {
-          modal.hide();
-        }
-
+        bootstrap.Modal.getInstance(document.getElementById('modalCredencialInvitado'))?.hide();
         formCredencialInvitado.reset();
         imprimirCredencialMascota(mascotaInvitada, true);
       };
-
       if (archivoFoto) {
         const lector = new FileReader();
         lector.onload = () => mostrarCredencial(String(lector.result || ''));
         lector.readAsDataURL(archivoFoto);
-        return;
-      }
-
-      mostrarCredencial();
+      } else mostrarCredencial();
     });
   }
 
   if (btnCerrarSesionGlobal) {
     btnCerrarSesionGlobal.addEventListener('click', async () => {
-      try {
-        await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
-      } catch(e) {}
-      limpiarSesion();
+      try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch(e) {}
+      estadoAplicacion.usuario = null;
       actualizarNavegacionAuth();
       resetearFormularioAdminUsuario();
       await Swal.fire({ icon: 'success', title: 'Sesión cerrada', timer: 900, showConfirmButton: false });
@@ -1168,14 +937,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  actualizarNavegacionAuth();
-  
-  const rutaIniciada = window.location.pathname.split('/').filter(Boolean)[0];
-  if (perfilPublicoInicial) {
-    cargarPerfilPublicoPorId(perfilPublicoInicial);
-  } else if (rutaIniciada) {
-    mostrarVista(rutaIniciada, false);
-  } else {
-    mostrarVista('inicio', false);
-  }
+  // Flujo Inicial
+  verificarSesionBackend().then(() => {
+    const rutaIniciada = window.location.pathname.split('/').filter(Boolean)[0];
+    if (perfilPublicoInicial) {
+      cargarPerfilPublicoPorId(perfilPublicoInicial);
+    } else if (rutaIniciada) {
+      mostrarVista(rutaIniciada, false);
+    } else {
+      mostrarVista('inicio', false);
+    }
+  });
+
 });
