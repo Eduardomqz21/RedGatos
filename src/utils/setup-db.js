@@ -1,3 +1,4 @@
+// src/utils/setup-db.js
 require('dotenv').config();
 const { pool } = require('../config/bd.config');
 const bcrypt = require('bcrypt');
@@ -17,7 +18,7 @@ const inicializarBaseDeDatos = async () => {
         contrasena_hash VARCHAR(255) NOT NULL,
         rol VARCHAR(50) DEFAULT 'admin',
         token_recuperacion VARCHAR(255),
-        expresion_recuperacion TIMESTAMP,
+        expiracion_recuperacion TIMESTAMP,
         creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `;
@@ -31,7 +32,7 @@ const inicializarBaseDeDatos = async () => {
         especie VARCHAR(50) NOT NULL,
         raza VARCHAR(100),
         descripcion TEXT,
-        telefono_dueno VARCHAR(50),
+        telefono_dueno VARCHAR(255), -- Ampliado para guardar el hash encriptado
         direccion_dueno TEXT,
         fecha_nacimiento DATE,
         esta_perdida BOOLEAN DEFAULT false,
@@ -45,6 +46,23 @@ const inicializarBaseDeDatos = async () => {
       );
     `;
     await pool.query(queryCrearTabla);
+
+    // NUEVO: Tabla independiente para el Memorial
+    const queryMemorial = `
+      CREATE TABLE IF NOT EXISTS mascotas_memorial (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        nombre VARCHAR(100) NOT NULL,
+        especie VARCHAR(50) NOT NULL,
+        raza VARCHAR(100),
+        fecha_nacimiento DATE,
+        fecha_fallecimiento DATE NOT NULL,
+        mensaje TEXT NOT NULL,
+        foto_url TEXT NOT NULL,
+        contador_veladoras INT DEFAULT 0,
+        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `;
+    await pool.query(queryMemorial);
 
     // Tabla para lista negra de JWT (Solución ARCH-001)
     const queryCrearTokensBloqueados = `
@@ -73,7 +91,6 @@ const inicializarBaseDeDatos = async () => {
     await pool.query(`CREATE INDEX IF NOT EXISTS indice_mascotas_ubicacion ON mascotas USING GIST (ubicacion);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_mascotas_usuario ON mascotas(id_usuario);`);
     
-    // Solución DB-002: Índices para búsquedas optimizadas sin escaneo completo
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_mascotas_nombre_trgm ON mascotas USING GIN (nombre gin_trgm_ops);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_mascotas_especie_trgm ON mascotas USING GIN (especie gin_trgm_ops);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_mascotas_raza_trgm ON mascotas USING GIN (raza gin_trgm_ops);`);

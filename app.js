@@ -1,3 +1,4 @@
+// app.js
 require('dotenv').config();
 
 const path = require('path');
@@ -10,6 +11,7 @@ const { pool } = require('./src/config/bd.config');
 const rutasMascotas = require('./src/routes/mascotas.routes');
 const rutasAuth = require('./src/routes/auth.routes');
 const rutasUsuarios = require('./src/routes/usuarios.routes');
+const rutasMemorial = require('./src/routes/memorial.routes'); // NUEVO
 const { BASE_UPLOAD_DIR } = require('./src/utils/archivos.util');
 const { inicializarBaseDeDatos } = require('./src/utils/setup-db');
 
@@ -34,6 +36,7 @@ aplicacion.use('/uploads', express.static(path.resolve(BASE_UPLOAD_DIR)));
 aplicacion.use('/api/mascotas', rutasMascotas);
 aplicacion.use('/api/auth', rutasAuth);
 aplicacion.use('/api/usuarios', rutasUsuarios);
+aplicacion.use('/api/memorial', rutasMemorial); // NUEVO
 
 aplicacion.get('/salud', (_peticion, respuesta) => {
   respuesta.status(200).json({ mensaje: 'API de PetMap activa y segura.' });
@@ -71,7 +74,6 @@ aplicacion.get('/sitemap.xml', async (peticion, respuesta) => {
     
     xml += `</urlset>`;
     
-    // Guardar en caché
     sitemapCache = xml;
     sitemapUltimaActualizacion = ahora;
 
@@ -82,16 +84,11 @@ aplicacion.get('/sitemap.xml', async (peticion, respuesta) => {
   }
 });
 
-const rutaIndexHtml = path.join(__dirname, 'public', 'index.html');
-let indexHtmlCache = '';
-try {
-  indexHtmlCache = fs.readFileSync(rutaIndexHtml, 'utf-8');
-} catch (error) {
-  console.error('No se pudo precargar index.html en memoria.', error);
-}
-
 aplicacion.get('*', async (peticion, respuesta) => {
-  let htmlModificado = indexHtmlCache;
+  // Leemos dinámicamente para evitar desactualizaciones si se modifica el HTML
+  const rutaIndexHtml = path.join(__dirname, 'public', 'index.html');
+  let htmlModificado = fs.readFileSync(rutaIndexHtml, 'utf-8');
+  
   const idPerfilMascota = peticion.query.perfil;
 
   if (idPerfilMascota) {
@@ -108,7 +105,7 @@ aplicacion.get('*', async (peticion, respuesta) => {
         const imagenSEO = mascota.foto_url ? `${protocolo}://${dominio}${mascota.foto_url}` : `${protocolo}://${dominio}/default-pet.png`;
         const urlActual = `${protocolo}://${dominio}/?perfil=${idPerfilMascota}`;
 
-        // UX-001: Regex mejorado ([\s\S]*?) para tolerar saltos de línea en el HTML
+        // UX-001: Regex mejorado para tolerar saltos de línea en el HTML
         htmlModificado = htmlModificado.replace(/<title>[\s\S]*?<\/title>/, `<title>${tituloSEO} | PetMap</title>`);
 
         const etiquetasOpenGraph = `
@@ -125,7 +122,7 @@ aplicacion.get('*', async (peticion, respuesta) => {
         htmlModificado = htmlModificado.replace('</head>', `${etiquetasOpenGraph}</head>`);
       }
     } catch (errorConsulta) {
-      // Retorna el HTML original si hay error
+      // Ignorar fallo de SEO y servir HTML normal
     }
   }
   respuesta.send(htmlModificado);
