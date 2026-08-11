@@ -49,11 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  const formatearFecha = (fechaISO) => {
-    if (!fechaISO) return '';
-    return fechaISO.split('T')[0];
-  };
-
   const generarCURM = (nombre, especie, fecha) => {
     const f = fecha ? new Date(fecha) : new Date();
     const valida = Number.isNaN(f.getTime()) ? new Date() : f;
@@ -143,8 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    console.log(`[UI] Vista activa cambiada a: --> ${vista} <--`);
-
     setTimeout(() => {
       if (vista === 'registro') sincronizarMapaRegistro();
       if (vista === 'busqueda' && window.petmapMapas) {
@@ -185,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log(`[FETCH] Realizando petición a: ${url}`);
       const resp = await fetch(url, opciones);
       const datos = await resp.json();
-      console.log(`[FETCH] Respuesta de ${url}: Status`, resp.status);
+      console.log(`[FETCH] Respuesta de ${url}: Status`, resp.status, 'Data:', datos);
       if (!resp.ok) {
         if ([401, 403].includes(resp.status)) return redirigirLogin();
         throw new Error(datos.mensaje || 'Error en la petición');
@@ -295,41 +288,86 @@ document.addEventListener('DOMContentLoaded', () => {
     DOM.contenedorMisMascotas.appendChild(frag);
   });
 
-  const cargarMascotasAdmin = () => procesarPeticion('/api/mascotas/admin/todas', { credentials: 'include' }, (datos) => {
-    const tabla = document.getElementById('tablaAdminMascotas');
-    if (!tabla) return;
-    tabla.innerHTML = datos.mascotas && datos.mascotas.length ? '' : '<tr><td colspan="5" class="text-center text-muted py-4">No hay mascotas registradas.</td></tr>';
-    if(datos.mascotas) {
+  // ========= FUNCIONES ADMIN MEJORADAS =========
+  const cargarMascotasAdmin = async () => {
+    try {
+      const resp = await fetch('/api/mascotas/admin/todas', { credentials: 'include' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const datos = await resp.json();
+      console.log('[ADMIN] Mascotas recibidas:', datos);
+      
+      const tabla = document.getElementById('tablaAdminMascotas');
+      if (!tabla) return;
+      tabla.innerHTML = '';
+      
+      if (!datos.mascotas || datos.mascotas.length === 0) {
+        tabla.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No hay mascotas registradas.</td></tr>';
+        return;
+      }
+      
       datos.mascotas.forEach(m => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td class="fw-bold">${escaparHtml(m.nombre)}</td><td>${escaparHtml(m.especie)}</td><td><span class="badge ${m.esta_perdida ? 'bg-danger' : 'bg-success'}">${m.esta_perdida ? 'Perdida' : 'A Salvo'}</span></td><td>${escaparHtml(m.telefono_dueno || 'Sin contacto')}</td><td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="window.borrarMascotaAdmin('${m.id}')">Eliminar</button></td>`;
         tabla.appendChild(tr);
       });
+    } catch (e) {
+      console.error('[ADMIN] Error cargando mascotas:', e);
+      Swal.fire('Error', 'No se pudieron cargar las mascotas.', 'error');
     }
-  });
+  };
 
-  const cargarUsuariosAdmin = () => procesarPeticion('/api/usuarios?limit=100', { credentials: 'include' }, (datos) => {
-    if (!DOM.tablaAdminUsuarios) return;
-    DOM.tablaAdminUsuarios.innerHTML = datos.usuarios.length ? '' : '<tr><td colspan="4" class="text-center text-muted py-4">No hay usuarios.</td></tr>';
-    datos.usuarios.forEach(u => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="fw-bold">${escaparHtml(u.nombre)}</td><td>${escaparHtml(u.correo)}</td><td><span class="badge ${u.rol === 'superadmin' ? 'bg-dark' : 'bg-primary'}">${escaparHtml(u.rol)}</span></td><td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="window.eliminarUsuario('${u.id}')">Eliminar</button></td>`;
-      DOM.tablaAdminUsuarios.appendChild(tr);
-    });
-  });
+  const cargarUsuariosAdmin = async () => {
+    try {
+      const resp = await fetch('/api/usuarios?limit=100', { credentials: 'include' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const datos = await resp.json();
+      console.log('[ADMIN] Usuarios recibidos:', datos);
+      
+      if (!DOM.tablaAdminUsuarios) return;
+      DOM.tablaAdminUsuarios.innerHTML = '';
+      
+      if (!datos.usuarios || datos.usuarios.length === 0) {
+        DOM.tablaAdminUsuarios.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay usuarios.</td></tr>';
+        return;
+      }
+      
+      datos.usuarios.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="fw-bold">${escaparHtml(u.nombre)}</td><td>${escaparHtml(u.correo)}</td><td><span class="badge ${u.rol === 'superadmin' ? 'bg-dark' : 'bg-primary'}">${escaparHtml(u.rol)}</span></td><td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="window.eliminarUsuario('${u.id}')">Eliminar</button></td>`;
+        DOM.tablaAdminUsuarios.appendChild(tr);
+      });
+    } catch (e) {
+      console.error('[ADMIN] Error cargando usuarios:', e);
+      Swal.fire('Error', 'No se pudieron cargar los usuarios.', 'error');
+    }
+  };
 
-  const cargarMemorialAdmin = () => procesarPeticion('/api/memorial', { credentials: 'include' }, (datos) => {
-    const tabla = document.getElementById('tablaAdminMemorial');
-    if (!tabla) return;
-    tabla.innerHTML = datos.memoriales && datos.memoriales.length ? '' : '<tr><td colspan="5" class="text-center text-muted py-4">No hay homenajes registrados.</td></tr>';
-    if(datos.memoriales) {
+  const cargarMemorialAdmin = async () => {
+    try {
+      const resp = await fetch('/api/memorial', { credentials: 'include' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const datos = await resp.json();
+      console.log('[ADMIN] Memoriales recibidos:', datos);
+      
+      const tabla = document.getElementById('tablaAdminMemorial');
+      if (!tabla) return;
+      tabla.innerHTML = '';
+      
+      if (!datos.memoriales || datos.memoriales.length === 0) {
+        tabla.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No hay homenajes registrados.</td></tr>';
+        return;
+      }
+      
       datos.memoriales.forEach(m => {
         const tr = document.createElement('tr');
         tr.innerHTML = `<td class="fw-bold">${escaparHtml(m.nombre)}</td><td>${escaparHtml(m.especie)}</td><td>${m.fecha_fallecimiento ? m.fecha_fallecimiento.split('T')[0] : ''}</td><td><small class="text-muted d-inline-block text-truncate" style="max-width: 150px;">${escaparHtml(m.mensaje)}</small></td><td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="window.borrarMemorialAdmin('${m.id}')">Eliminar</button></td>`;
         tabla.appendChild(tr);
       });
+    } catch (e) {
+      console.error('[ADMIN] Error cargando memoriales:', e);
+      Swal.fire('Error', 'No se pudieron cargar los homenajes.', 'error');
     }
-  });
+  };
 
   const aplicarFiltroTabla = (inputId, tablaId) => {
     const input = document.getElementById(inputId);
