@@ -1,8 +1,10 @@
 // src/config/bd.config.js
 const { Pool } = require('pg');
 
-const configuracionSsl = process.env.NODE_ENV === 'production' 
-  ? { rejectUnauthorized: true } 
+// Si el host es localhost, nunca usamos SSL, sin importar si estamos en producción.
+// Si es un host externo en producción (ej. AWS, Supabase, Render), sí activará SSL.
+const configuracionSsl = (process.env.NODE_ENV === 'production' && process.env.DB_HOST !== 'localhost') 
+  ? { rejectUnauthorized: false } 
   : false;
 
 // Solución PERF-002: Optimización del Pool para alta concurrencia
@@ -13,23 +15,24 @@ const configuracionPool = {
   password: process.env.DB_PASSWORD,
   port: Number(process.env.DB_PORT || 5432),
   ssl: configuracionSsl,
-  max: 50, // Límite máximo de clientes en el pool (ajustar según tu RAM y servidor DB)
-  idleTimeoutMillis: 30000, // Cierra conexiones inactivas después de 30s
-  connectionTimeoutMillis: 5000, // Falla rápido si la DB no responde en 5s
+  // Toma el valor del .env o usa 50 por defecto
+  max: Number(process.env.DB_POOL_MAX || 50), 
+  idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT || 30000), 
+  connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT || 5000), 
 };
 
 const pool = new Pool(configuracionPool);
 
 // Monitoreo de errores inesperados en clientes inactivos (Evita caída del servidor)
 pool.on('error', (err, client) => {
-  console.error('Error inesperado en el cliente PostgreSQL inactivo', err);
+  console.error('[BD ERROR] Error inesperado en el cliente PostgreSQL inactivo:', err.message);
 });
 
 pool.connect((err, client, release) => {
   if (err) {
-    console.error('Error crítico: No se pudo conectar a PostgreSQL.', err.message);
+    console.error('[BD CRÍTICO] No se pudo conectar a PostgreSQL.', err.message);
   } else {
-    console.log('✅ Conexión a PostgreSQL establecida y optimizada.');
+    console.log(`✅ Conexión a PostgreSQL establecida y optimizada (Max Pool: ${configuracionPool.max}).`);
     release();
   }
 });

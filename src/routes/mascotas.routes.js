@@ -31,7 +31,7 @@ rutas.post('/', verificarToken, limiteSubida, procesarSubida, registrarMascota);
 rutas.get('/perdidas', limitePublico, obtenerMascotasPerdidas);
 rutas.get('/mis-mascotas', verificarToken, obtenerMisMascotas);
 
-// RUTA ADMIN GLOBAL PARA LAS TABLAS DE MASCOTAS
+// RUTA ADMIN GLOBAL PARA LAS TABLAS DE MASCOTAS (Debe estar antes de /:id)
 rutas.get('/admin/todas', verificarToken, verificarRolAdmin, obtenerTodasMascotasAdmin);
 
 rutas.get('/:id/publico', limitePublico, obtenerPerfilPublico);

@@ -22,7 +22,11 @@ const cifrarDatos = (texto) => {
 };
 
 const descifrarDatos = (textoCifrado) => {
-  if (!textoCifrado || !textoCifrado.includes(':')) return textoCifrado;
+  // Solución: Prevenir fallos con tipos de datos incorrectos
+  if (!textoCifrado || typeof textoCifrado !== 'string' || !textoCifrado.includes(':')) {
+    return textoCifrado;
+  }
+  
   try {
     const [ivHex, authTagHex, encryptedHex] = textoCifrado.split(':');
     const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, Buffer.from(ivHex, 'hex'));

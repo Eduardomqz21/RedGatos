@@ -39,38 +39,28 @@ const limpiarMascotaParaMapa = ({ telefono_dueno, direccion_dueno, id_usuario, .
 
 const registrarMascota = async (req, res) => {
   try {
-    console.log('\n--- INTENTO DE REGISTRO DE MASCOTA ---');
-    console.log('Datos (Body):', req.body);
-    
     const idUsuario = req.usuario?.id;
     const { nombre, especie, raza, descripcion, telefono_dueno, direccion_dueno, fecha_nacimiento, esta_perdida, latitud, longitud, idioma_registro } = req.body;
     const perdida = esta_perdida === 'true' || esta_perdida === true;
 
-    if (!idUsuario) {
-      console.log('❌ Rechazo: Usuario no autorizado');
-      return res.status(401).json({ mensaje: 'No autorizado.' });
-    }
+    if (!idUsuario) return res.status(401).json({ mensaje: 'No autorizado.' });
     if (!nombre || !especie) return res.status(400).json({ mensaje: 'Nombre y especie obligatorios.' });
     if (perdida && (!telefono_dueno || !direccion_dueno)) return res.status(400).json({ mensaje: 'Teléfono y dirección obligatorios.' });
 
     let fotoRutaFinal = null;
     if (req.file) {
-      console.log('🖼️ Procesando imagen...');
       const dirBase = asegurarDirectorioMascota(nombre);
       const nombreArchivo = `${crypto.randomUUID()}.webp`;
       await sharp(req.file.path).resize(800, 800, { fit: 'inside' }).webp({ quality: 80 }).toFile(path.join(dirBase, nombreArchivo));
       fotoRutaFinal = `/uploads/${path.basename(dirBase)}/${nombreArchivo}`;
-      console.log('✅ Imagen lista:', fotoRutaFinal);
     }
 
     const latNum = (perdida && latitud) ? Number(latitud) : null;
     const lonNum = (perdida && longitud) ? Number(longitud) : null;
     
-    console.log('🔐 Cifrando teléfono y dirección...');
     const telefonoCifrado = cifrarDatos(telefono_dueno);
     const direccionCifrada = cifrarDatos(direccion_dueno);
     
-    console.log('💾 Guardando en Base de Datos...');
     const consulta = `
       INSERT INTO mascotas (
         id_usuario, nombre, especie, raza, descripcion, telefono_dueno, direccion_dueno, 
@@ -88,33 +78,20 @@ const registrarMascota = async (req, res) => {
     `;
     
     const valores = [
-      idUsuario, 
-      nombre, 
-      especie, 
-      raza || null, 
-      descripcion || null, 
-      telefonoCifrado, 
-      direccionCifrada, 
-      fecha_nacimiento || null, 
-      perdida, 
-      idioma_registro || 'es', 
-      latNum, 
-      lonNum, 
-      fotoRutaFinal
+      idUsuario, nombre, especie, raza || null, descripcion || null, 
+      telefonoCifrado, direccionCifrada, fecha_nacimiento || null, 
+      perdida, idioma_registro || 'es', latNum, lonNum, fotoRutaFinal
     ];
     
     const resultado = await consultarBd(consulta, valores);
     const mascota = resultado.rows[0];
     
-    console.log('🔓 Descifrando para enviar respuesta al frontend...');
     mascota.telefono_dueno = descifrarDatos(mascota.telefono_dueno);
     mascota.direccion_dueno = descifrarDatos(mascota.direccion_dueno);
 
     const url = construirUrlFrontend(req, mascota.id);
-    console.log('✅ ¡Registro Finalizado con Éxito!');
     res.status(201).json({ mensaje: 'Registrada.', mascota, url_perfil: url, qr_perfil: await generarQrMascota(url), foto_url: fotoRutaFinal });
   } catch (error) {
-    console.error('❌ Error CRÍTICO al registrar mascota:', error);
     res.status(500).json({ mensaje: 'Error al registrar mascota.' });
   } finally {
     if (req.file) limpiarArchivoTemporal(req.file.path);
@@ -148,10 +125,14 @@ const obtenerMisMascotas = async (req, res) => {
 
 const obtenerTodasMascotasAdmin = async (req, res) => {
   try {
-    const result = await consultarBd('SELECT id, nombre, especie, esta_perdida, telefono_dueno, id_usuario, creado_en FROM mascotas ORDER BY creado_en DESC LIMIT 500');
+    // Solución: Traemos todos los campos y creamos un nuevo objeto seguro al iterar
+    const result = await consultarBd('SELECT * FROM mascotas ORDER BY creado_en DESC LIMIT 500');
     const mascotas = result.rows.map(m => {
-      m.telefono_dueno = descifrarDatos(m.telefono_dueno);
-      return m;
+      return {
+        ...m,
+        telefono_dueno: descifrarDatos(m.telefono_dueno) || '',
+        direccion_dueno: descifrarDatos(m.direccion_dueno) || ''
+      };
     });
     res.status(200).json({ mascotas });
   } catch (error) {
@@ -218,7 +199,7 @@ const verificarAccesoMascota = async (req, res) => {
     if (!result.rowCount) return res.status(404).json({ mensaje: 'No encontrada.' });
 
     const mascota = result.rows[0];
-    const telReal = descifrarDatos(mascota.telefono_dueno);
+    const telReal = descifrarDatos(mascota.telefono_dueno) || '';
     const telIngresado = String(req.body.telefono_dueno || '').replace(/\D/g, '');
     
     if (telReal.replace(/\D/g, '') !== telIngresado) return res.status(401).json({ mensaje: 'Teléfono incorrecto.' });

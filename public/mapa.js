@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
           html += `<div class="mb-3 ${g.length > 1 ? 'border-bottom pb-3' : ''}">
             ${m.foto_url ? `<img src="${m.foto_url}" style="width:100%;height:130px;object-fit:cover;border-radius:8px;margin-bottom:10px;"/>` : ''}
             <h6 class="mb-1 fw-bold">${m.nombre}</h6><p class="small text-muted">${m.especie}</p>
-            <button class="btn btn-sm btn-danger w-100" onclick="window.abrirPerfilPublico(decodeURIComponent('${encodeURIComponent(JSON.stringify(m))}'))">Ayudar</button>
+            <button class="btn btn-sm btn-danger w-100 btn-abrir-publico" data-mascota="${encodeURIComponent(JSON.stringify(m))}">Ayudar</button>
           </div>`;
         });
         return L.marker([g[0].latitud, g[0].longitud], { icon: IconoPerdida }).bindPopup(html + '</div>');
