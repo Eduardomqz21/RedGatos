@@ -49,11 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  const formatearFecha = (fechaISO) => {
-    if (!fechaISO) return '';
-    return fechaISO.split('T')[0];
-  };
-
   const generarCURM = (nombre, especie, fecha) => {
     const f = fecha ? new Date(fecha) : new Date();
     const valida = Number.isNaN(f.getTime()) ? new Date() : f;
@@ -119,7 +114,14 @@ document.addEventListener('DOMContentLoaded', () => {
     DOM.itemAdmin?.classList.toggle('d-none', !(auth && ['admin', 'superadmin'].includes(estado.usuario.rol)));
   };
 
-  const redirigirLogin = () => { estado.usuario = null; verificarSesion(); mostrarVista('login'); };
+  const redirigirLogin = () => { 
+    estado.usuario = null; 
+    DOM.btnNavLogin?.classList.remove('d-none');
+    DOM.menuLogueado?.classList.add('d-none');
+    if (DOM.txtNombre) DOM.txtNombre.textContent = 'Mi Cuenta';
+    DOM.itemAdmin?.classList.add('d-none');
+    mostrarVista('login'); 
+  };
 
   const mostrarVista = (vista, empujar = true) => {
     const collapse = document.getElementById('navbarContent');
@@ -138,12 +140,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     DOM.botonesVista.forEach(b => { if (!b.classList.contains('dropdown-item')) b.classList.toggle('activa', b.dataset.vista === vista); });
 
-    if (empujar && window.location.pathname.replace('/', '') !== vista) {
+    if (empujar && window.location.pathname.replace(/^\/+/, '') !== vista) {
       window.history.pushState({ vista }, '', `/${vista === 'inicio' ? '' : vista}`);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-
-    console.log(`[UI] Vista activa cambiada a: --> ${vista} <--`);
 
     setTimeout(() => {
       if (vista === 'registro') sincronizarMapaRegistro();
@@ -154,7 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 300);
 
     if (vista === 'admin') { 
-      console.log('[UI] Solicitando carga de datos para Panel Admin...');
       cargarMascotasAdmin(); 
       cargarUsuariosAdmin(); 
       cargarMemorialAdmin(); 
@@ -163,7 +162,36 @@ document.addEventListener('DOMContentLoaded', () => {
     if (vista === 'memorial') cargarMemoriales();
   };
 
-  window.addEventListener('popstate', (e) => mostrarVista(e.state?.vista || window.location.pathname.replace('/', '') || 'inicio', false));
+  DOM.botonesVista.forEach(boton => {
+    boton.addEventListener('click', (e) => {
+      e.preventDefault();
+      mostrarVista(boton.dataset.vista);
+    });
+  });
+
+  window.addEventListener('popstate', (e) => {
+    let ruta = e.state?.vista || window.location.pathname.replace(/^\/+/, '');
+    if (ruta === 'index.html' || ruta === '') ruta = 'inicio';
+    mostrarVista(ruta, false);
+  });
+
+  // DELEGACIÓN DE EVENTOS GLOBAL: Controla todos los clics generados por código dinámico
+  document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('btn-borrar-mascota')) {
+      window.borrarMascotaAdmin(e.target.dataset.id);
+    } else if (e.target.classList.contains('btn-borrar-usuario')) {
+      window.eliminarUsuario(e.target.dataset.id);
+    } else if (e.target.classList.contains('btn-borrar-memorial')) {
+      window.borrarMemorialAdmin(e.target.dataset.id);
+    } else if (e.target.classList.contains('btn-abrir-perfil')) {
+      window.petmapUI.abrirPrivado(e.target.dataset.mascota);
+    } else if (e.target.classList.contains('btn-preparar-estado')) {
+      const t = e.target;
+      window.petmapUI.prepararEstado(t.dataset.id, t.dataset.perdida, t.dataset.tel, t.dataset.dir);
+    } else if (e.target.classList.contains('btn-abrir-publico')) {
+      window.abrirPerfilPublico(decodeURIComponent(e.target.dataset.mascota));
+    }
+  });
 
   const sincronizarMapaRegistro = () => {
     if (!DOM.contenedorMapaRegistro || !DOM.chkEstaPerdida || !DOM.colFormularioRegistro) return;
@@ -182,18 +210,41 @@ document.addEventListener('DOMContentLoaded', () => {
   const procesarPeticion = async (url, opciones = {}, callback) => {
     try {
       opciones.credentials = opciones.credentials || 'include';
-      console.log(`[FETCH] Realizando petición a: ${url}`);
       const resp = await fetch(url, opciones);
       const datos = await resp.json();
-      console.log(`[FETCH] Respuesta de ${url}: Status`, resp.status);
       if (!resp.ok) {
         if ([401, 403].includes(resp.status)) return redirigirLogin();
         throw new Error(datos.mensaje || 'Error en la petición');
       }
       if (callback) callback(datos);
     } catch (e) { 
-      console.error(`[FETCH ERROR en ${url}]:`, e);
       Swal.fire('Error', e.message, 'error'); 
+    }
+  };
+
+  const encenderVeladora = async (id, btn) => {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try {
+      btn.innerHTML = 'Encendiendo...';
+      const resp = await fetch(`/api/memorial/${id}/veladora`, { method: 'POST', credentials: 'include' });
+      if (!resp.ok) throw new Error();
+      const d = await resp.json();
+      
+      document.getElementById('modalMemContador').textContent = d.veladoras;
+      btn.innerHTML = 'Veladora Encendida';
+      btn.classList.add('veladora-activa');
+
+      const rect = btn.getBoundingClientRect();
+      const chispa = document.createElement('div');
+      chispa.className = 'chispa-animacion';
+      chispa.style.left = `${rect.left + rect.width / 2}px`;
+      chispa.style.top = `${rect.top}px`;
+      document.body.appendChild(chispa);
+      setTimeout(() => chispa.remove(), 1000);
+    } catch (e) {
+      btn.innerHTML = 'Intentar de nuevo';
+      btn.disabled = false;
     }
   };
 
@@ -214,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
       img.style.top = `${top}%`;
       img.style.left = `${left}%`;
       img.style.animationDelay = `${delay}s`;
-      img.alt = m.nombre;
+      img.alt = escaparHtml(m.nombre);
       
       img.onclick = () => {
         document.getElementById('modalMemFoto').src = m.foto_url;
@@ -224,37 +275,20 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('modalMemContador').textContent = m.contador_veladoras;
         
         const btn = document.getElementById('btnEncenderVeladora');
-        btn.onclick = () => encenderVeladora(m.id, btn);
-        btn.className = 'btn btn-veladora fs-5 w-100 mb-2'; 
-        btn.innerHTML = 'Encender veladora';
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        newBtn.className = 'btn btn-veladora fs-5 w-100 mb-2'; 
+        newBtn.innerHTML = 'Encender veladora';
+        newBtn.disabled = false;
+        newBtn.classList.remove('veladora-activa');
+        newBtn.onclick = () => encenderVeladora(m.id, newBtn);
         
         new bootstrap.Modal(document.getElementById('modalMemorialInfo')).show();
       };
       DOM.espacioMemorial.appendChild(img);
     });
   });
-
-  const encenderVeladora = async (id, btn) => {
-    try {
-      btn.innerHTML = 'Encendiendo...';
-      const resp = await fetch(`/api/memorial/${id}/veladora`, { method: 'POST', credentials: 'include' });
-      if (!resp.ok) throw new Error();
-      const d = await resp.json();
-      document.getElementById('modalMemContador').textContent = d.veladoras;
-      btn.innerHTML = 'Veladora Encendida';
-      btn.classList.add('veladora-activa');
-
-      const rect = btn.getBoundingClientRect();
-      const chispa = document.createElement('div');
-      chispa.className = 'chispa-animacion';
-      chispa.style.left = `${rect.left + rect.width / 2}px`;
-      chispa.style.top = `${rect.top}px`;
-      document.body.appendChild(chispa);
-      setTimeout(() => chispa.remove(), 1000);
-    } catch (e) {
-      btn.innerHTML = 'Intentar de nuevo';
-    }
-  };
 
   DOM.formMemorial?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -285,9 +319,9 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <p class="text-muted small mb-0 flex-grow-1">${escaparHtml(m.descripcion || 'Sin descripción')}</p>
           <div class="d-flex gap-2 mt-3 pt-3 border-top">
-            <button class="btn btn-sm btn-outline-primary flex-grow-1 fw-bold" onclick="window.petmapUI.abrirPrivado('${encodeURIComponent(JSON.stringify(m))}')">Perfil / ID</button>
-            <button class="btn btn-sm btn-outline-dark flex-grow-1 fw-bold" onclick="window.petmapUI.prepararEstado('${m.id}', '${m.esta_perdida}', '${escaparHtml(m.telefono_dueno)}', '${escaparHtml(m.direccion_dueno)}')">Estado</button>
-            <button class="btn btn-sm btn-outline-danger fw-bold" onclick="window.borrarMascotaAdmin('${m.id}')">Borrar</button>
+            <button class="btn btn-sm btn-outline-primary flex-grow-1 fw-bold btn-abrir-perfil" data-mascota="${encodeURIComponent(JSON.stringify(m))}">Perfil / ID</button>
+            <button class="btn btn-sm btn-outline-dark flex-grow-1 fw-bold btn-preparar-estado" data-id="${m.id}" data-perdida="${m.esta_perdida}" data-tel="${escaparHtml(m.telefono_dueno)}" data-dir="${escaparHtml(m.direccion_dueno)}">Estado</button>
+            <button class="btn btn-sm btn-outline-danger fw-bold btn-borrar-mascota" data-id="${m.id}">Borrar</button>
           </div>
         </div>`;
       frag.appendChild(div);
@@ -295,41 +329,79 @@ document.addEventListener('DOMContentLoaded', () => {
     DOM.contenedorMisMascotas.appendChild(frag);
   });
 
-  const cargarMascotasAdmin = () => procesarPeticion('/api/mascotas/admin/todas', { credentials: 'include' }, (datos) => {
-    const tabla = document.getElementById('tablaAdminMascotas');
-    if (!tabla) return;
-    tabla.innerHTML = datos.mascotas && datos.mascotas.length ? '' : '<tr><td colspan="5" class="text-center text-muted py-4">No hay mascotas registradas.</td></tr>';
-    if(datos.mascotas) {
+  const cargarMascotasAdmin = async () => {
+    try {
+      const resp = await fetch('/api/mascotas/admin/todas', { credentials: 'include' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const datos = await resp.json();
+      
+      const tabla = document.getElementById('tablaAdminMascotas');
+      if (!tabla) return;
+      tabla.innerHTML = '';
+      
+      if (!datos.mascotas || datos.mascotas.length === 0) {
+        tabla.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No hay mascotas registradas.</td></tr>';
+        return;
+      }
+      
       datos.mascotas.forEach(m => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="fw-bold">${escaparHtml(m.nombre)}</td><td>${escaparHtml(m.especie)}</td><td><span class="badge ${m.esta_perdida ? 'bg-danger' : 'bg-success'}">${m.esta_perdida ? 'Perdida' : 'A Salvo'}</span></td><td>${escaparHtml(m.telefono_dueno || 'Sin contacto')}</td><td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="window.borrarMascotaAdmin('${m.id}')">Eliminar</button></td>`;
+        tr.innerHTML = `<td class="fw-bold">${escaparHtml(m.nombre)}</td><td>${escaparHtml(m.especie)}</td><td><span class="badge ${m.esta_perdida ? 'bg-danger' : 'bg-success'}">${m.esta_perdida ? 'Perdida' : 'A Salvo'}</span></td><td>${escaparHtml(m.telefono_dueno || 'Sin contacto')}</td><td class="text-end"><button class="btn btn-outline-danger btn-sm btn-borrar-mascota" data-id="${m.id}">Eliminar</button></td>`;
         tabla.appendChild(tr);
       });
+    } catch (e) {
+      Swal.fire('Error', 'No se pudieron cargar las mascotas.', 'error');
     }
-  });
+  };
 
-  const cargarUsuariosAdmin = () => procesarPeticion('/api/usuarios?limit=100', { credentials: 'include' }, (datos) => {
-    if (!DOM.tablaAdminUsuarios) return;
-    DOM.tablaAdminUsuarios.innerHTML = datos.usuarios.length ? '' : '<tr><td colspan="4" class="text-center text-muted py-4">No hay usuarios.</td></tr>';
-    datos.usuarios.forEach(u => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td class="fw-bold">${escaparHtml(u.nombre)}</td><td>${escaparHtml(u.correo)}</td><td><span class="badge ${u.rol === 'superadmin' ? 'bg-dark' : 'bg-primary'}">${escaparHtml(u.rol)}</span></td><td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="window.eliminarUsuario('${u.id}')">Eliminar</button></td>`;
-      DOM.tablaAdminUsuarios.appendChild(tr);
-    });
-  });
+  const cargarUsuariosAdmin = async () => {
+    try {
+      const resp = await fetch('/api/usuarios?limit=100', { credentials: 'include' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const datos = await resp.json();
+      
+      if (!DOM.tablaAdminUsuarios) return;
+      DOM.tablaAdminUsuarios.innerHTML = '';
+      
+      if (!datos.usuarios || datos.usuarios.length === 0) {
+        DOM.tablaAdminUsuarios.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay usuarios.</td></tr>';
+        return;
+      }
+      
+      datos.usuarios.forEach(u => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="fw-bold">${escaparHtml(u.nombre)}</td><td>${escaparHtml(u.correo)}</td><td><span class="badge ${u.rol === 'superadmin' ? 'bg-dark' : 'bg-primary'}">${escaparHtml(u.rol)}</span></td><td class="text-end"><button class="btn btn-outline-danger btn-sm btn-borrar-usuario" data-id="${u.id}">Eliminar</button></td>`;
+        DOM.tablaAdminUsuarios.appendChild(tr);
+      });
+    } catch (e) {
+      Swal.fire('Error', 'No se pudieron cargar los usuarios.', 'error');
+    }
+  };
 
-  const cargarMemorialAdmin = () => procesarPeticion('/api/memorial', { credentials: 'include' }, (datos) => {
-    const tabla = document.getElementById('tablaAdminMemorial');
-    if (!tabla) return;
-    tabla.innerHTML = datos.memoriales && datos.memoriales.length ? '' : '<tr><td colspan="5" class="text-center text-muted py-4">No hay homenajes registrados.</td></tr>';
-    if(datos.memoriales) {
+  const cargarMemorialAdmin = async () => {
+    try {
+      const resp = await fetch('/api/memorial', { credentials: 'include' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const datos = await resp.json();
+      
+      const tabla = document.getElementById('tablaAdminMemorial');
+      if (!tabla) return;
+      tabla.innerHTML = '';
+      
+      if (!datos.memoriales || datos.memoriales.length === 0) {
+        tabla.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No hay homenajes registrados.</td></tr>';
+        return;
+      }
+      
       datos.memoriales.forEach(m => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="fw-bold">${escaparHtml(m.nombre)}</td><td>${escaparHtml(m.especie)}</td><td>${m.fecha_fallecimiento ? m.fecha_fallecimiento.split('T')[0] : ''}</td><td><small class="text-muted d-inline-block text-truncate" style="max-width: 150px;">${escaparHtml(m.mensaje)}</small></td><td class="text-end"><button class="btn btn-outline-danger btn-sm" onclick="window.borrarMemorialAdmin('${m.id}')">Eliminar</button></td>`;
+        tr.innerHTML = `<td class="fw-bold">${escaparHtml(m.nombre)}</td><td>${escaparHtml(m.especie)}</td><td>${m.fecha_fallecimiento ? m.fecha_fallecimiento.split('T')[0] : ''}</td><td><small class="text-muted d-inline-block text-truncate" style="max-width: 150px;">${escaparHtml(m.mensaje)}</small></td><td class="text-end"><button class="btn btn-outline-danger btn-sm btn-borrar-memorial" data-id="${m.id}">Eliminar</button></td>`;
         tabla.appendChild(tr);
       });
+    } catch (e) {
+      Swal.fire('Error', 'No se pudieron cargar los homenajes.', 'error');
     }
-  });
+  };
 
   const aplicarFiltroTabla = (inputId, tablaId) => {
     const input = document.getElementById(inputId);
@@ -346,30 +418,49 @@ document.addEventListener('DOMContentLoaded', () => {
   aplicarFiltroTabla('filtroAdminMascotas', 'tablaAdminMascotas');
   aplicarFiltroTabla('filtroAdminMemorial', 'tablaAdminMemorial');
 
+  // MÉTODOS DE BORRADO ROBUSTOS (Con comprobación de errores)
   window.borrarMascotaAdmin = async (id) => {
-    if ((await Swal.fire({ title: '¿Borrar esta mascota de la base de datos?', icon: 'warning', showCancelButton: true })).isConfirmed) {
-      await fetch(`/api/mascotas/${id}`, { method: 'DELETE', credentials: 'include' });
-      Swal.fire('Eliminada', '', 'success');
-      if(document.getElementById('vista-admin').classList.contains('activa')) cargarMascotasAdmin();
-      if(document.getElementById('vista-mis-mascotas').classList.contains('activa')) cargarMisMascotas();
+    const confirm = await Swal.fire({ title: '¿Borrar esta mascota de la base de datos?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
+    if (confirm.isConfirmed) {
+      try {
+        const resp = await fetch(`/api/mascotas/${id}`, { method: 'DELETE', credentials: 'include' });
+        if (!resp.ok) throw new Error('No se pudo borrar la mascota');
+        Swal.fire('Eliminada', '', 'success');
+        if(document.getElementById('vista-admin').classList.contains('activa')) cargarMascotasAdmin();
+        if(document.getElementById('vista-mis-mascotas').classList.contains('activa')) cargarMisMascotas();
+      } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+      }
     }
   };
 
   window.eliminarUsuario = async (id) => {
-    if ((await Swal.fire({ title: '¿Eliminar usuario y todos sus datos?', icon: 'warning', showCancelButton: true })).isConfirmed) {
-      await fetch(`/api/usuarios/${id}`, { method: 'DELETE', credentials: 'include' });
-      Swal.fire('Eliminado', '', 'success');
-      cargarUsuariosAdmin();
-      cargarMascotasAdmin();
+    const confirm = await Swal.fire({ title: '¿Eliminar usuario y todos sus datos?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
+    if (confirm.isConfirmed) {
+      try {
+        const resp = await fetch(`/api/usuarios/${id}`, { method: 'DELETE', credentials: 'include' });
+        if (!resp.ok) throw new Error('No se pudo borrar el usuario');
+        Swal.fire('Eliminado', '', 'success');
+        cargarUsuariosAdmin();
+        cargarMascotasAdmin();
+      } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+      }
     }
   };
 
   window.borrarMemorialAdmin = async (id) => {
-    if ((await Swal.fire({ title: '¿Borrar permanentemente este homenaje?', icon: 'warning', showCancelButton: true })).isConfirmed) {
-      await fetch(`/api/memorial/${id}`, { method: 'DELETE', credentials: 'include' }); 
-      Swal.fire('Eliminado', '', 'success');
-      cargarMemorialAdmin();
-      cargarMemoriales();
+    const confirm = await Swal.fire({ title: '¿Borrar permanentemente este homenaje?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
+    if (confirm.isConfirmed) {
+      try {
+        const resp = await fetch(`/api/memorial/${id}`, { method: 'DELETE', credentials: 'include' }); 
+        if (!resp.ok) throw new Error('No se pudo borrar el homenaje');
+        Swal.fire('Eliminado', '', 'success');
+        cargarMemorialAdmin();
+        cargarMemoriales();
+      } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+      }
     }
   };
 
@@ -380,6 +471,35 @@ document.addEventListener('DOMContentLoaded', () => {
     procesarPeticion('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ correo: DOM.formLogin.correo.value, contrasena: DOM.formLogin.contrasena.value }) }, (d) => {
       estado.usuario = d.usuario; verificarSesion(); DOM.formLogin.reset();
       mostrarVista(['admin', 'superadmin'].includes(d.usuario.rol) ? 'admin' : 'mis-mascotas');
+    });
+    alternarBotonCarga(btn, false);
+  });
+
+  DOM.btnCerrarSesion?.addEventListener('click', async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    } catch(e) {}
+    redirigirLogin();
+    Swal.fire({ title: 'Sesión Cerrada', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+  });
+
+  DOM.formRegistro?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnSubmitRegistroUsuario');
+    alternarBotonCarga(btn, true, 'Registrarme');
+    
+    procesarPeticion('/api/auth/registro', { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify({ 
+        nombre: DOM.formRegistro.nombre.value, 
+        correo: DOM.formRegistro.correo.value, 
+        contrasena: DOM.formRegistro.contrasena.value 
+      }) 
+    }, (d) => {
+      DOM.formRegistro.reset();
+      Swal.fire('¡Registro exitoso!', 'Ahora puedes iniciar sesión.', 'success');
+      mostrarVista('login');
     });
     alternarBotonCarga(btn, false);
   });
@@ -437,7 +557,9 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('qrMascotaPrivado').classList.remove('d-none');
       document.getElementById('telefonoMascotaPrivado').textContent = m.telefono_dueno || 'Sin Teléfono';
       document.getElementById('direccionMascotaPrivado').textContent = m.direccion_dueno || 'Sin Dirección';
+      
       document.getElementById('estadoMascotaPrivado').textContent = `Estado actual: ${m.esta_perdida ? 'Perdida' : 'A Salvo'}`;
+      document.getElementById('estadoMascotaPrivado').className = `mini-etiqueta mb-3 fs-6 ${m.esta_perdida ? 'bg-danger text-white' : 'bg-success text-white'}`;
       
       const btnEstado = document.getElementById('btnCambiarEstadoMascota');
       btnEstado.textContent = m.esta_perdida ? 'Marcar como A Salvo' : 'Reportar Extravío';
@@ -507,7 +629,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (perfilInicial) {
       procesarPeticion(`/api/mascotas/${perfilInicial}/publico`, {}, (d) => window.abrirPerfilPublico(JSON.stringify(d.mascota)));
     } else {
-      mostrarVista(window.location.pathname.replace('/', '') || 'inicio', false);
+      let rutaInicial = window.location.pathname.replace(/^\/+/, '');
+      if (rutaInicial === 'index.html' || rutaInicial === '') rutaInicial = 'inicio';
+      mostrarVista(rutaInicial, false);
     }
   });
 });

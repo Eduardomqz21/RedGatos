@@ -26,7 +26,7 @@ const verificarToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.log('❌ Rechazado: Token inválido/expirado.');
-    res.clearCookie('petmap_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict' });
+    res.clearCookie('petmap_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Lax' });
     res.status(403).json({ mensaje: 'Sesión expirada o revocada.' });
   }
 };

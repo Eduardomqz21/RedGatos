@@ -22,7 +22,9 @@ const registrarUsuario = async (req, res) => {
     }
 
     const contrasenaCifrada = await bcrypt.hash(contrasena, 10);
-    const consulta = `INSERT INTO usuarios (nombre, correo, contrasena_hash) VALUES ($1, $2, $3) RETURNING id, nombre, correo, rol;`;
+    
+    // CORRECCIÓN: Se fuerza explícitamente el rol 'usuario' en el INSERT
+    const consulta = `INSERT INTO usuarios (nombre, correo, contrasena_hash, rol) VALUES ($1, $2, $3, 'usuario') RETURNING id, nombre, correo, rol;`;
     const resultado = await consultarBd(consulta, [nombre.trim(), correo.trim(), contrasenaCifrada]);
 
     res.status(201).json({ mensaje: 'Usuario registrado.', usuario: resultado.rows[0] });
@@ -53,7 +55,8 @@ const iniciarSesion = async (req, res) => {
     res.cookie('petmap_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Strict',
+      sameSite: 'Lax', 
+      path: '/',
       maxAge: 8 * 60 * 60 * 1000 // 8 horas
     });
 
@@ -80,7 +83,14 @@ const cerrarSesion = async (req, res) => {
       console.error('Error al revocar token:', e.message);
     }
   }
-  res.clearCookie('petmap_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict' });
+  
+  res.clearCookie('petmap_token', { 
+    httpOnly: true, 
+    secure: process.env.NODE_ENV === 'production', 
+    sameSite: 'Lax', 
+    path: '/' 
+  });
+  
   res.status(200).json({ mensaje: 'Sesión cerrada.' });
 };
 

@@ -2,8 +2,9 @@
 const bcrypt = require('bcrypt');
 const { consultarBd } = require('../config/bd.config');
 
-const ROLES_VALIDOS = new Set(['admin', 'superadmin']);
-const normalizarRol = (rol) => ROLES_VALIDOS.has(String(rol).toLowerCase()) ? String(rol).toLowerCase() : 'admin';
+// CORRECCIÓN: Se agrega 'usuario' como un rol válido y predeterminado
+const ROLES_VALIDOS = new Set(['usuario', 'admin', 'superadmin']);
+const normalizarRol = (rol) => ROLES_VALIDOS.has(String(rol).toLowerCase()) ? String(rol).toLowerCase() : 'usuario';
 const expContrasena = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 const listarUsuarios = async (req, res) => {

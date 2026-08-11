@@ -6,6 +6,8 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const fs = require('fs');
+const helmet = require('helmet');
+const compression = require('compression');
 const { pool } = require('./src/config/bd.config');
 
 const rutasMascotas = require('./src/routes/mascotas.routes');
@@ -13,32 +15,100 @@ const rutasAuth = require('./src/routes/auth.routes');
 const rutasUsuarios = require('./src/routes/usuarios.routes');
 const rutasMemorial = require('./src/routes/memorial.routes'); 
 const { BASE_UPLOAD_DIR } = require('./src/utils/archivos.util');
-const { inicializarBaseDeDatos } = require('./src/utils/setup-db');
 
 const aplicacion = express();
 const puertoServidor = Number(process.env.PORT || 3000);
 
+// SEGURIDAD: Configurar Trust Proxy correctamente para Cloudflare
+// El número 1 indica que confiamos en exactamente 1 proxy por delante (Cloudflare)
 aplicacion.set('trust proxy', 1);
 
-aplicacion.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true
+// SEGURIDAD: Headers HTTP seguros y CSP relajado para la UI
+aplicacion.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      connectSrc: ["'self'", "https:"],
+      workerSrc: ["'self'", "blob:"],
+    },
+  },
+  crossOriginEmbedderPolicy: false,
 }));
 
-aplicacion.use(express.json());
-aplicacion.use(express.urlencoded({ extended: true }));
+// PERFORMANCE: Compresión Gzip/Brotli
+aplicacion.use(compression());
+
+// SEGURIDAD INTELIGENTE: CORS dinámico para pruebas fluidas
+aplicacion.use(cors({
+  origin: function (origin, callback) {
+    // Limpiamos las URLs permitidas del .env (quitando barras al final)
+    const origenesPermitidos = process.env.CORS_ORIGIN 
+      ? process.env.CORS_ORIGIN.split(',').map(o => o.trim().replace(/\/$/, '')) 
+      : [];
+    
+    // 1. Permitir si no hay origen explícito
+    // 2. Permitir si coincide con el .env
+    // 3. Permitir automáticamente localhost y los túneles de Cloudflare para no tener que editar el .env a cada rato
+    if (!origin || 
+        origenesPermitidos.includes(origin) || 
+        origin.startsWith('http://localhost') || 
+        origin.endsWith('.trycloudflare.com')) {
+      callback(null, true);
+    } else {
+      console.error(`[CORS BLOQUEADO] Intento de acceso desde origen no autorizado: ${origin}`);
+      callback(new Error('No permitido por CORS'));
+    }
+  },
+  credentials: true,
+  optionsSuccessStatus: 200
+}));
+
+aplicacion.use(express.json({ limit: '1mb' })); // Límite de payload
+aplicacion.use(express.urlencoded({ extended: true, limit: '1mb' }));
 aplicacion.use(cookieParser());
 
-aplicacion.use(express.static(path.join(__dirname, 'public'), { index: false }));
-aplicacion.use('/uploads', express.static(path.resolve(BASE_UPLOAD_DIR)));
+// Caché inmutable para assets estáticos, no-cache para HTML
+aplicacion.use(express.static(path.join(__dirname, 'public'), { 
+  index: false,
+  setHeaders: (res, path) => {
+    if (path.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    } else if (path.match(/\.(css|js|png|jpg|webp)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  }
+}));
 
+// Servir uploads estáticamente pero restringiendo ejecución
+aplicacion.use('/uploads', express.static(path.resolve(BASE_UPLOAD_DIR), {
+  setHeaders: (res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', 'inline');
+  }
+}));
+
+// Rutas API
 aplicacion.use('/api/mascotas', rutasMascotas);
 aplicacion.use('/api/auth', rutasAuth);
 aplicacion.use('/api/usuarios', rutasUsuarios);
 aplicacion.use('/api/memorial', rutasMemorial);
 
+// Health Checks Separados
 aplicacion.get('/salud', (_peticion, respuesta) => {
-  respuesta.status(200).json({ mensaje: 'API de PetMap activa y segura.' });
+  respuesta.status(200).json({ estado: 'ok', mensaje: 'Servidor Node.js activo.' });
+});
+
+aplicacion.get('/salud/db', async (_peticion, respuesta) => {
+  try {
+    await pool.query('SELECT 1');
+    respuesta.status(200).json({ estado: 'ok', mensaje: 'PostgreSQL conectado.' });
+  } catch (error) {
+    respuesta.status(500).json({ estado: 'error', mensaje: 'PostgreSQL inaccesible.' });
+  }
 });
 
 aplicacion.get('/robots.txt', (peticion, respuesta) => {
@@ -46,6 +116,7 @@ aplicacion.get('/robots.txt', (peticion, respuesta) => {
   respuesta.send(`User-agent: *\nAllow: /\nSitemap: ${peticion.protocol}://${peticion.get('host')}/sitemap.xml`);
 });
 
+// Sitemap
 let sitemapCache = '';
 let sitemapUltimaActualizacion = 0;
 const TIEMPO_CACHE_SITEMAP = 60 * 60 * 1000; 
@@ -69,7 +140,6 @@ aplicacion.get('/sitemap.xml', async (peticion, respuesta) => {
     });
     
     xml += `</urlset>`;
-    
     sitemapCache = xml;
     sitemapUltimaActualizacion = ahora;
 
@@ -80,6 +150,7 @@ aplicacion.get('/sitemap.xml', async (peticion, respuesta) => {
   }
 });
 
+// Front Controller SPA
 aplicacion.get('*', async (peticion, respuesta) => {
   const rutaIndexHtml = path.join(__dirname, 'public', 'index.html');
   let htmlModificado = fs.readFileSync(rutaIndexHtml, 'utf-8');
@@ -94,7 +165,7 @@ aplicacion.get('*', async (peticion, respuesta) => {
         const mascota = resultadoMascota.rows[0];
         const tituloSEO = mascota.esta_perdida ? `¡SE BUSCA! Ayuda a ${mascota.nombre} a volver a casa` : `Conoce a ${mascota.nombre} en PetMap`;
         const descripcionSEO = mascota.descripcion || 'Revisa el perfil de esta mascota y ayuda a nuestra comunidad.';
-        const protocolo = peticion.headers['x-forwarded-proto'] || peticion.protocol || 'http';
+        const protocolo = peticion.headers['x-forwarded-proto'] || peticion.protocol || 'https';
         const dominio = peticion.get('host');
         const imagenSEO = mascota.foto_url ? `${protocolo}://${dominio}${mascota.foto_url}` : `${protocolo}://${dominio}/default-pet.png`;
         const urlActual = `${protocolo}://${dominio}/?perfil=${idPerfilMascota}`;
@@ -115,22 +186,26 @@ aplicacion.get('*', async (peticion, respuesta) => {
         htmlModificado = htmlModificado.replace('</head>', `${etiquetasOpenGraph}</head>`);
       }
     } catch (errorConsulta) {
+      // Ignorar silenciosamente errores de DB en la inyección SEO
     }
   }
   respuesta.send(htmlModificado);
 });
 
+// SEGURIDAD: Middleware global de manejo de errores
+aplicacion.use((err, req, res, next) => {
+  // Solo silenciar el stack trace en producción
+  res.status(err.status || 500).json({
+    error: true,
+    mensaje: err.message === 'No permitido por CORS' ? err.message : (process.env.NODE_ENV === 'production' ? 'Ocurrió un error interno en el servidor.' : err.message),
+    codigo: 'ERROR_INTERNO'
+  });
+});
+
 if (require.main === module) {
-  inicializarBaseDeDatos()
-    .then(() => {
-      aplicacion.listen(puertoServidor, () => {
-        console.log(`Servidor de PetMap escuchando en el puerto ${puertoServidor}`);
-      });
-    })
-    .catch((errorInicializacion) => {
-      console.error('Error al inicializar la base de datos:', errorInicializacion.message);
-      process.exit(1);
-    });
+  aplicacion.listen(puertoServidor, () => {
+    console.log(`[PRODUCCION] Servidor de PetMap escuchando en el puerto ${puertoServidor}`);
+  });
 }
 
 module.exports = aplicacion;
