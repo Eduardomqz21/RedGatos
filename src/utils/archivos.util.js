@@ -25,8 +25,6 @@ const borrarArchivoFisico = (rutaRelativa) => {
   if (!rutaRelativa) return;
   
   const rutaAbsoluta = path.resolve(__dirname, '../../', rutaRelativa.replace(/^\/+/, ''));
-  
-  // Seguridad Reforzada: Asegurar que el borrado ocurra estrictamente DENTRO de la carpeta permitida
   const baseSegura = path.resolve(BASE_UPLOAD_DIR) + path.sep;
   
   if (rutaAbsoluta.startsWith(baseSegura)) {

@@ -1,7 +1,5 @@
-// src/utils/crypto.util.js
 const crypto = require('crypto');
 
-// Usamos la llave del .env, si no existe generamos una temporal (solo para evitar crasheos en dev)
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY 
   ? Buffer.from(process.env.ENCRYPTION_KEY, 'base64') 
   : crypto.randomBytes(32);
@@ -16,7 +14,6 @@ const cifrarDatos = (texto) => {
     let encrypted = cipher.update(String(texto), 'utf8', 'hex');
     encrypted += cipher.final('hex');
     const authTag = cipher.getAuthTag().toString('hex');
-    // Formato: iv:authTag:textoCifrado
     return `${iv.toString('hex')}:${authTag}:${encrypted}`;
   } catch (error) {
     console.error('Error al cifrar datos:', error.message);
@@ -25,7 +22,6 @@ const cifrarDatos = (texto) => {
 };
 
 const descifrarDatos = (textoCifrado) => {
-  // Si no tiene el formato de nuestro cifrado, devolvemos el texto original (soporte a datos legacy)
   if (!textoCifrado || !textoCifrado.includes(':')) return textoCifrado;
   try {
     const [ivHex, authTagHex, encryptedHex] = textoCifrado.split(':');
@@ -36,7 +32,7 @@ const descifrarDatos = (textoCifrado) => {
     return decrypted;
   } catch (error) {
     console.error('Error al descifrar datos (posible llave incorrecta):', error.message);
-    return textoCifrado; // Fallback
+    return textoCifrado; 
   }
 };
 

@@ -1,4 +1,3 @@
-// src/routes/auth.routes.js
 const { Router } = require('express');
 const rateLimit = require('express-rate-limit');
 const { 
@@ -28,10 +27,7 @@ const limiteRecuperacion = rateLimit({
 rutasAuth.post('/login', limiteIntentosLogin, iniciarSesion);
 rutasAuth.post('/registro', registrarUsuario);
 rutasAuth.post('/logout', cerrarSesion);
-
-// Endpoint para validar sesión desde el Frontend (Evita spoofing de LocalStorage)
 rutasAuth.get('/me', verificarToken, obtenerSesionActual);
-
 rutasAuth.post('/recuperar', limiteRecuperacion, solicitarRecuperacion);
 rutasAuth.post('/resetear', limiteRecuperacion, restablecerContrasena);
 

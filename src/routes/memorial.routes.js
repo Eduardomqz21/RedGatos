@@ -1,6 +1,5 @@
-// src/routes/memorial.routes.js
 const { Router } = require('express');
-const { subidaFotoMascota } = require('../controllers/mascotas.controller'); // Reusamos la config de Multer
+const { subidaFotoMascota } = require('../controllers/mascotas.controller');
 const { registrarMemorial, obtenerMemoriales, encenderVeladora } = require('../controllers/memorial.controller');
 const rateLimit = require('express-rate-limit');
 
