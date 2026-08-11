@@ -9,7 +9,6 @@ const { verificarToken, verificarRolAdmin } = require('../middlewares/auth.middl
 
 const rutasUsuarios = Router();
 
-// Protegemos todas las rutas con verificación segura de la cookie
 rutasUsuarios.use(verificarToken, verificarRolAdmin);
 
 rutasUsuarios.get('/', listarUsuarios);

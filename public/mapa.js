@@ -1,224 +1,112 @@
+'use strict';
+
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof L === 'undefined') return;
 
-  const estadoMapas = {
-    mapaRegistro: null,
-    mapaBusqueda: null,
-    mapaEstado: null,
-    marcadorRegistro: null,
-    circuloRegistro: null,
-    marcadorEstado: null,
-    circuloEstado: null,
-    clusterBusqueda: null
-  };
+  const estado = { reg: null, busq: null, est: null, marReg: null, cirReg: null, marEst: null, cirEst: null, cluster: null };
+  const baseCfg = { zoomControl: false, scrollWheelZoom: false, dragging: !L.Browser.mobile, tap: !L.Browser.mobile, keyboard: true };
 
-  const IconoBase = L.divIcon({
-    className: '',
-    html: `<div style="width:24px;height:24px;border-radius:50%;background:#2e4a45;border:3px solid white;box-shadow:0 4px 8px rgba(0,0,0,0.4);"></div>`,
-    iconSize: [24, 24], iconAnchor: [12, 12]
-  });
-
-  const IconoPerdida = L.divIcon({
-    className: '',
-    html: `<div style="width:24px;height:24px;border-radius:50%;background:#c94c4c;border:3px solid white;box-shadow:0 4px 8px rgba(0,0,0,0.4); animation: pulse-suave 2s infinite;"></div>`,
-    iconSize: [24, 24], iconAnchor: [12, 12]
-  });
-
-  const escaparHtml = (texto) => {
-    return String(texto || '').replace(/[&<>"']/g, (match) => {
-        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-        return map[match];
-    }).replace(/\n/g, '<br>');
-  };
+  const IconoBase = L.divIcon({ className: '', html: `<div style="width:24px;height:24px;border-radius:50%;background:#2e4a45;border:3px solid white;box-shadow:0 4px 8px rgba(0,0,0,0.4);"></div>`, iconSize: [24, 24], iconAnchor: [12, 12] });
+  const IconoPerdida = L.divIcon({ className: '', html: `<div style="width:24px;height:24px;border-radius:50%;background:#c94c4c;border:3px solid white;box-shadow:0 4px 8px rgba(0,0,0,0.4); animation: pulse-suave 2s infinite;"></div>`, iconSize: [24, 24], iconAnchor: [12, 12] });
 
   const style = document.createElement('style');
   style.innerHTML = `@keyframes pulse-suave { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.15); opacity: 0.85; } 100% { transform: scale(1); opacity: 1; } }`;
   document.head.appendChild(style);
 
-  const esMovil = L.Browser.mobile;
-  
-  // Se añade explícitamente keyboard: true para soporte A11y (WCAG 2.2)
-  const opcionesMapaBase = { 
-    zoomControl: false,
-    scrollWheelZoom: false, 
-    dragging: !esMovil,     
-    tap: !esMovil,
-    keyboard: true 
-  };
+  const initRegistro = () => {
+    if (!document.getElementById('mapa-registro')) return;
+    if (!estado.reg) {
+      estado.reg = L.map('mapa-registro', baseCfg).setView([20.29, -103.18], 12);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(estado.reg);
+      L.control.zoom({ position: 'bottomright' }).addTo(estado.reg);
+      estado.reg.locate({ setView: true, maxZoom: 14 });
 
-  const inicializarMapaRegistro = () => {
-    const el = document.getElementById('mapa-registro');
-    if (!el) return;
-
-    if (!estadoMapas.mapaRegistro) {
-      estadoMapas.mapaRegistro = L.map('mapa-registro', opcionesMapaBase).setView([20.29, -103.18], 12);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(estadoMapas.mapaRegistro);
-      L.control.zoom({ position: 'bottomright' }).addTo(estadoMapas.mapaRegistro);
-
-      estadoMapas.mapaRegistro.locate({ setView: true, maxZoom: 14 });
-
-      estadoMapas.mapaRegistro.on('click', (e) => {
-        if (estadoMapas.marcadorRegistro) estadoMapas.marcadorRegistro.remove();
-        if (estadoMapas.circuloRegistro) estadoMapas.circuloRegistro.remove();
-
-        estadoMapas.marcadorRegistro = L.marker(e.latlng, { icon: IconoBase, draggable: true }).addTo(estadoMapas.mapaRegistro);
-        estadoMapas.circuloRegistro = L.circle(e.latlng, {
-          radius: 500, color: '#2e4a45', fillColor: '#2e4a45', fillOpacity: 0.2, weight: 2,
-        }).addTo(estadoMapas.mapaRegistro);
-        
+      estado.reg.on('click', (e) => {
+        if (estado.marReg) estado.marReg.remove();
+        if (estado.cirReg) estado.cirReg.remove();
+        estado.marReg = L.marker(e.latlng, { icon: IconoBase, draggable: true }).addTo(estado.reg);
+        estado.cirReg = L.circle(e.latlng, { radius: 500, color: '#2e4a45', fillColor: '#2e4a45', fillOpacity: 0.2, weight: 2 }).addTo(estado.reg);
         window.petmapUI?.establecerCoordenadas(e.latlng.lat, e.latlng.lng);
-        
-        estadoMapas.marcadorRegistro.on('drag', (ev) => {
-          estadoMapas.circuloRegistro?.setLatLng(ev.target.getLatLng());
-        });
-
-        estadoMapas.marcadorRegistro.on('dragend', (ev) => {
-          window.petmapUI?.establecerCoordenadas(ev.target.getLatLng().lat, ev.target.getLatLng().lng);
-        });
+        estado.marReg.on('drag', ev => estado.cirReg?.setLatLng(ev.target.getLatLng()));
+        estado.marReg.on('dragend', ev => window.petmapUI?.establecerCoordenadas(ev.target.getLatLng().lat, ev.target.getLatLng().lng));
       });
-    } else {
-      setTimeout(() => estadoMapas.mapaRegistro.invalidateSize(), 400);
-    }
+    } else setTimeout(() => estado.reg.invalidateSize(), 400);
   };
 
-  const cargarMascotasPerdidas = async () => {
-    if (!estadoMapas.mapaBusqueda || !estadoMapas.clusterBusqueda) return;
-    
-    const bounds = estadoMapas.mapaBusqueda.getBounds();
-    const norte = bounds.getNorth();
-    const sur = bounds.getSouth();
-    const este = bounds.getEast();
-    const oeste = bounds.getWest();
-
-    estadoMapas.clusterBusqueda.clearLayers();
-
+  const cargarPerdidas = async () => {
+    if (!estado.busq || !estado.cluster) return;
+    const { _northEast: ne, _southWest: sw } = estado.busq.getBounds();
+    estado.cluster.clearLayers();
     try {
-      const urlFetch = `/api/mascotas/perdidas?norte=${norte}&sur=${sur}&este=${este}&oeste=${oeste}&limit=300`;
-      const resp = await fetch(urlFetch);
+      const resp = await fetch(`/api/mascotas/perdidas?norte=${ne.lat}&sur=${sw.lat}&este=${ne.lng}&oeste=${sw.lng}&limit=300`);
       if (!resp.ok) return;
-      const datos = await resp.json();
-
-      const gruposMascotas = {};
-
-      (datos.mascotas || []).forEach((m) => {
-        if (m.latitud == null || m.longitud == null) return;
-        const claveZona = `${Number(m.latitud).toFixed(4)},${Number(m.longitud).toFixed(4)}`;
-        if (!gruposMascotas[claveZona]) gruposMascotas[claveZona] = [];
-        gruposMascotas[claveZona].push(m);
+      const { mascotas } = await resp.json();
+      
+      const grupos = {};
+      mascotas.forEach(m => {
+        if (m.latitud == null) return;
+        const key = `${Number(m.latitud).toFixed(4)},${Number(m.longitud).toFixed(4)}`;
+        if (!grupos[key]) grupos[key] = [];
+        grupos[key].push(m);
       });
 
-      const nuevosMarcadores = [];
-
-      Object.values(gruposMascotas).forEach((grupo) => {
-        const lat = grupo[0].latitud;
-        const lng = grupo[0].longitud;
-
-        let htmlPopup = `<div style="min-width:200px; max-height:300px; overflow-y:auto; overflow-x:hidden;">`;
-        if (grupo.length > 1) {
-          htmlPopup += `<div class="alert alert-danger p-2 text-center small mb-3"><strong>¡${grupo.length} mascotas perdidas en esta zona!</strong></div>`;
-        }
-
-        grupo.forEach((m) => {
-          const mascotaSerializada = encodeURIComponent(JSON.stringify(m));
-          htmlPopup += `
-            <div class="mb-3 ${grupo.length > 1 ? 'border-bottom pb-3' : ''}">
-              ${m.foto_url ? `<img src="${escaparHtml(m.foto_url)}" alt="foto de ${escaparHtml(m.nombre)}" style="width:100%;height:130px;object-fit:cover;border-radius:8px;margin-bottom:10px;" />` : ''}
-              <h6 class="mb-1 text-dark fw-bold">${escaparHtml(m.nombre)}</h6>
-              <p class="small mb-2 text-muted">${escaparHtml(m.especie)}</p>
-              <button type="button" class="btn btn-sm btn-danger w-100 fw-bold" onclick="window.abrirPerfilPublico(decodeURIComponent('${mascotaSerializada}'))">Ayudar</button>
-            </div>
-          `;
+      const marcadores = Object.values(grupos).map(g => {
+        let html = `<div style="min-width:200px; max-height:300px; overflow-y:auto; overflow-x:hidden;">`;
+        if (g.length > 1) html += `<div class="alert alert-danger p-2 text-center small mb-3"><strong>¡${g.length} mascotas aquí!</strong></div>`;
+        g.forEach(m => {
+          html += `<div class="mb-3 ${g.length > 1 ? 'border-bottom pb-3' : ''}">
+            ${m.foto_url ? `<img src="${m.foto_url}" style="width:100%;height:130px;object-fit:cover;border-radius:8px;margin-bottom:10px;"/>` : ''}
+            <h6 class="mb-1 fw-bold">${m.nombre}</h6><p class="small text-muted">${m.especie}</p>
+            <button class="btn btn-sm btn-danger w-100" onclick="window.abrirPerfilPublico(decodeURIComponent('${encodeURIComponent(JSON.stringify(m))}'))">Ayudar</button>
+          </div>`;
         });
-
-        htmlPopup += `</div>`;
-        const marcador = L.marker([lat, lng], { icon: IconoPerdida }).bindPopup(htmlPopup);
-        nuevosMarcadores.push(marcador);
+        return L.marker([g[0].latitud, g[0].longitud], { icon: IconoPerdida }).bindPopup(html + '</div>');
       });
-
-      estadoMapas.clusterBusqueda.addLayers(nuevosMarcadores);
-    } catch (e) { 
-      console.error('Error cargando mapa:', e); 
-    }
+      estado.cluster.addLayers(marcadores);
+    } catch (e) {}
   };
 
-  const inicializarMapaBusqueda = () => {
-    const el = document.getElementById('mapa-busqueda');
-    if (!el) return;
-
-    if (!estadoMapas.mapaBusqueda) {
-      estadoMapas.mapaBusqueda = L.map('mapa-busqueda', opcionesMapaBase).setView([20.29, -103.18], 12);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(estadoMapas.mapaBusqueda);
-      L.control.zoom({ position: 'bottomright' }).addTo(estadoMapas.mapaBusqueda);
-      
-      estadoMapas.clusterBusqueda = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40 });
-      estadoMapas.mapaBusqueda.addLayer(estadoMapas.clusterBusqueda);
-      
-      estadoMapas.mapaBusqueda.on('moveend', cargarMascotasPerdidas);
-      
-      estadoMapas.mapaBusqueda.locate({ setView: true, maxZoom: 14 });
-    } else {
-      setTimeout(() => estadoMapas.mapaBusqueda.invalidateSize(), 400);
-    }
+  const initBusqueda = () => {
+    if (!document.getElementById('mapa-busqueda')) return;
+    if (!estado.busq) {
+      estado.busq = L.map('mapa-busqueda', baseCfg).setView([20.29, -103.18], 12);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(estado.busq);
+      L.control.zoom({ position: 'bottomright' }).addTo(estado.busq);
+      estado.cluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 40 });
+      estado.busq.addLayer(estado.cluster);
+      estado.busq.on('moveend', cargarPerdidas);
+      estado.busq.locate({ setView: true, maxZoom: 14 });
+    } else setTimeout(() => estado.busq.invalidateSize(), 400);
   };
 
-  const inicializarMapaEstado = () => {
-    const el = document.getElementById('mapa-estado');
-    if (!el) return;
-
-    if (!estadoMapas.mapaEstado) {
-      estadoMapas.mapaEstado = L.map('mapa-estado', { ...opcionesMapaBase, dragging: true, tap: true }).setView([20.29, -103.18], 12);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(estadoMapas.mapaEstado);
-      L.control.zoom({ position: 'bottomright' }).addTo(estadoMapas.mapaEstado);
-      estadoMapas.mapaEstado.locate({ setView: true, maxZoom: 14 });
-
-      estadoMapas.mapaEstado.on('click', (e) => {
-        if (estadoMapas.marcadorEstado) estadoMapas.marcadorEstado.remove();
-        if (estadoMapas.circuloEstado) estadoMapas.circuloEstado.remove();
-
-        estadoMapas.marcadorEstado = L.marker(e.latlng, { icon: IconoPerdida, draggable: true }).addTo(estadoMapas.mapaEstado);
-        estadoMapas.circuloEstado = L.circle(e.latlng, {
-          radius: 500, color: '#c94c4c', fillColor: '#c94c4c', fillOpacity: 0.2, weight: 2,
-        }).addTo(estadoMapas.mapaEstado);
-
-        const inputLatitud = document.getElementById('latitudEstado');
-        const inputLongitud = document.getElementById('longitudEstado');
-
-        if (inputLatitud) inputLatitud.value = String(e.latlng.lat);
-        if (inputLongitud) inputLongitud.value = String(e.latlng.lng);
-
-        estadoMapas.marcadorEstado.on('dragend', (ev) => {
-          const posicion = ev.target.getLatLng();
-          estadoMapas.circuloEstado?.setLatLng(posicion);
-          if (inputLatitud) inputLatitud.value = String(posicion.lat);
-          if (inputLongitud) inputLongitud.value = String(posicion.lng);
+  const initEstado = () => {
+    if (!document.getElementById('mapa-estado')) return;
+    if (!estado.est) {
+      estado.est = L.map('mapa-estado', { ...baseCfg, dragging: true, tap: true }).setView([20.29, -103.18], 12);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(estado.est);
+      estado.est.locate({ setView: true, maxZoom: 14 });
+      estado.est.on('click', e => {
+        if (estado.marEst) estado.marEst.remove();
+        if (estado.cirEst) estado.cirEst.remove();
+        estado.marEst = L.marker(e.latlng, { icon: IconoPerdida, draggable: true }).addTo(estado.est);
+        estado.cirEst = L.circle(e.latlng, { radius: 500, color: '#c94c4c', fillColor: '#c94c4c', fillOpacity: 0.2 }).addTo(estado.est);
+        document.getElementById('latitudEstado').value = e.latlng.lat;
+        document.getElementById('longitudEstado').value = e.latlng.lng;
+        estado.marEst.on('dragend', ev => {
+          estado.cirEst?.setLatLng(ev.target.getLatLng());
+          document.getElementById('latitudEstado').value = ev.target.getLatLng().lat;
+          document.getElementById('longitudEstado').value = ev.target.getLatLng().lng;
         });
       });
-    } else {
-      setTimeout(() => estadoMapas.mapaEstado.invalidateSize(), 300);
-    }
+    } else setTimeout(() => estado.est.invalidateSize(), 300);
   };
 
-  const limpiarMapaRegistro = () => {
-    if (estadoMapas.marcadorRegistro) {
-      estadoMapas.marcadorRegistro.remove();
-      estadoMapas.marcadorRegistro = null;
-    }
-    if (estadoMapas.circuloRegistro) {
-      estadoMapas.circuloRegistro.remove();
-      estadoMapas.circuloRegistro = null;
-    }
-    const inputLatitud = document.getElementById('latitud');
-    const inputLongitud = document.getElementById('longitud');
-    
-    if (inputLatitud) inputLatitud.value = '';
-    if (inputLongitud) inputLongitud.value = '';
+  const limpiarReg = () => {
+    estado.marReg?.remove(); estado.marReg = null;
+    estado.cirReg?.remove(); estado.cirReg = null;
+    if (document.getElementById('latitud')) document.getElementById('latitud').value = '';
+    if (document.getElementById('longitud')) document.getElementById('longitud').value = '';
   };
 
-  window.petmapMapas = {
-    inicializarMapaRegistro,
-    inicializarMapaBusqueda,
-    inicializarMapaEstado,
-    limpiarMapaRegistro,
-    cargarMascotasPerdidas,
-  };
+  window.petmapMapas = { inicializarMapaRegistro: initRegistro, inicializarMapaBusqueda: initBusqueda, inicializarMapaEstado: initEstado, limpiarMapaRegistro: limpiarReg, cargarMascotasPerdidas: cargarPerdidas };
 });

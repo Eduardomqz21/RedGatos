@@ -1,207 +1,124 @@
-// src/controllers/auth.controller.js
+'use strict';
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { consultarBd } = require('../config/bd.config');
 
-const esCorreoValido = (correo) => {
-  const expresionRegular = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return expresionRegular.test(correo);
-};
+const esCorreoValido = (correo) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
+const expContrasena = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
-const registrarUsuario = async (peticion, respuesta) => {
+const registrarUsuario = async (req, res) => {
   try {
-    const { nombre, correo, contrasena } = peticion.body;
+    const { nombre, correo, contrasena } = req.body;
 
     if (!nombre || typeof nombre !== 'string' || nombre.length > 100) {
-      return respuesta.status(400).json({ mensaje: 'El nombre es obligatorio y debe tener máximo 100 caracteres.' });
+      return res.status(400).json({ mensaje: 'Nombre obligatorio (máx 100 caracteres).' });
     }
     if (!correo || typeof correo !== 'string' || correo.length > 255 || !esCorreoValido(correo)) {
-      return respuesta.status(400).json({ mensaje: 'El correo es obligatorio, válido y menor a 255 caracteres.' });
+      return res.status(400).json({ mensaje: 'Correo obligatorio y válido.' });
     }
-    if (!contrasena || typeof contrasena !== 'string' || contrasena.length > 128) {
-      return respuesta.status(400).json({ mensaje: 'La contraseña es obligatoria y no debe exceder los 128 caracteres.' });
-    }
-
-    const expresionContrasena = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!expresionContrasena.test(contrasena)) {
-      return respuesta.status(400).json({
-        mensaje: 'La contraseña debe tener mínimo 8 caracteres, mayúsculas, minúsculas, números y un símbolo especial.'
-      });
+    if (!contrasena || typeof contrasena !== 'string' || contrasena.length > 128 || !expContrasena.test(contrasena)) {
+      return res.status(400).json({ mensaje: 'Contraseña inválida. Mínimo 8 caracteres, mayúsculas, minúsculas, números y símbolo especial.' });
     }
 
     const contrasenaCifrada = await bcrypt.hash(contrasena, 10);
-    const consultaRegistro = `
-      INSERT INTO usuarios (nombre, correo, contrasena_hash)
-      VALUES ($1, $2, $3)
-      RETURNING id, nombre, correo;
-    `;
-    const resultado = await consultarBd(consultaRegistro, [nombre, correo, contrasenaCifrada]);
+    const consulta = `INSERT INTO usuarios (nombre, correo, contrasena_hash) VALUES ($1, $2, $3) RETURNING id, nombre, correo, rol;`;
+    const resultado = await consultarBd(consulta, [nombre.trim(), correo.trim(), contrasenaCifrada]);
 
-    return respuesta.status(201).json({
-      mensaje: 'Usuario registrado correctamente.',
-      usuario: resultado.rows[0],
-    });
+    res.status(201).json({ mensaje: 'Usuario registrado.', usuario: resultado.rows[0] });
   } catch (error) {
-    const correoDuplicado = error.code === '23505';
-    return respuesta.status(correoDuplicado ? 409 : 500).json({
-      mensaje: correoDuplicado ? 'El correo ya está registrado.' : 'Ocurrió un error interno al registrar el usuario.',
-    });
+    if (error.code === '23505') return res.status(409).json({ mensaje: 'El correo ya está registrado.' });
+    res.status(500).json({ mensaje: 'Error interno al registrar.' });
   }
 };
 
-const iniciarSesion = async (peticion, respuesta) => {
+const iniciarSesion = async (req, res) => {
   try {
-    const { correo, contrasena } = peticion.body;
+    const { correo, contrasena } = req.body;
+    if (!correo || !contrasena) return res.status(400).json({ mensaje: 'Faltan credenciales.' });
 
-    if (!correo || typeof correo !== 'string' || correo.length > 255) {
-      return respuesta.status(400).json({ mensaje: 'El correo es obligatorio y debe tener un formato válido.' });
-    }
-    if (!contrasena || typeof contrasena !== 'string' || contrasena.length > 128) {
-      return respuesta.status(400).json({ mensaje: 'La contraseña es obligatoria.' });
-    }
+    const resultado = await consultarBd(`SELECT id, correo, contrasena_hash, rol, nombre FROM usuarios WHERE correo = $1 LIMIT 1;`, [correo.trim()]);
+    const usuario = resultado.rows[0];
 
-    const consultaUsuario = `SELECT id, correo, contrasena_hash, rol, nombre FROM usuarios WHERE correo = $1 LIMIT 1;`;
-    const resultado = await consultarBd(consultaUsuario, [correo]);
-    const usuarioEncontrado = resultado.rows[0];
-
-    if (!usuarioEncontrado) {
-      return respuesta.status(401).json({ mensaje: 'Credenciales inválidas.' });
+    if (!usuario || !(await bcrypt.compare(contrasena, usuario.contrasena_hash))) {
+      return res.status(401).json({ mensaje: 'Credenciales inválidas.' });
     }
 
-    const esContrasenaValida = await bcrypt.compare(contrasena, usuarioEncontrado.contrasena_hash);
-    if (!esContrasenaValida) {
-      return respuesta.status(401).json({ mensaje: 'Credenciales inválidas.' });
-    }
-
-    // Reducido a 8 horas por recomendación de seguridad
-    const tokenSesion = jwt.sign(
-      { id: usuarioEncontrado.id, rol: usuarioEncontrado.rol, correo: usuarioEncontrado.correo, nombre: usuarioEncontrado.nombre },
+    const token = jwt.sign(
+      { id: usuario.id, rol: usuario.rol, correo: usuario.correo, nombre: usuario.nombre },
       process.env.JWT_SECRET,
       { expiresIn: '8h' }
     );
 
-    respuesta.cookie('petmap_token', tokenSesion, {
+    res.cookie('petmap_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'Strict',
       maxAge: 8 * 60 * 60 * 1000 // 8 horas
     });
 
-    return respuesta.status(200).json({
-      mensaje: 'Inicio de sesión exitoso.',
-      usuario: { id: usuarioEncontrado.id, correo: usuarioEncontrado.correo, rol: usuarioEncontrado.rol, nombre: usuarioEncontrado.nombre },
+    res.status(200).json({
+      mensaje: 'Acceso autorizado.',
+      usuario: { id: usuario.id, correo: usuario.correo, rol: usuario.rol, nombre: usuario.nombre }
     });
   } catch (error) {
-    console.error(error);
-    return respuesta.status(500).json({ mensaje: 'Ocurrió un error interno al iniciar sesión.' });
+    res.status(500).json({ mensaje: 'Error interno al iniciar sesión.' });
   }
 };
 
-// NUEVO: Endpoint para que el Frontend verifique la sesión de forma segura
-const obtenerSesionActual = (peticion, respuesta) => {
-  if (!peticion.usuario) {
-    return respuesta.status(401).json({ mensaje: 'No hay sesión activa.' });
-  }
-  return respuesta.status(200).json({ usuario: peticion.usuario });
+const obtenerSesionActual = (req, res) => {
+  if (!req.usuario) return res.status(401).json({ mensaje: 'No hay sesión activa.' });
+  res.status(200).json({ usuario: req.usuario });
 };
 
-const cerrarSesion = async (peticion, respuesta) => {
-  const token = peticion.cookies?.petmap_token;
-  
+const cerrarSesion = async (req, res) => {
+  const token = req.cookies?.petmap_token;
   if (token) {
     try {
-      const consultaBloqueo = `INSERT INTO tokens_bloqueados (token) VALUES ($1) ON CONFLICT DO NOTHING;`;
-      await consultarBd(consultaBloqueo, [token]);
+      await consultarBd(`INSERT INTO tokens_bloqueados (token) VALUES ($1) ON CONFLICT DO NOTHING;`, [token]);
     } catch (e) {
       console.error('Error al revocar token:', e.message);
     }
   }
-
-  respuesta.clearCookie('petmap_token', {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict'
-  });
-  return respuesta.status(200).json({ mensaje: 'Sesión cerrada y token revocado correctamente.' });
+  res.clearCookie('petmap_token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'Strict' });
+  res.status(200).json({ mensaje: 'Sesión cerrada.' });
 };
 
-const solicitarRecuperacion = async (peticion, respuesta) => {
+const solicitarRecuperacion = async (req, res) => {
   try {
-    const { correo } = peticion.body;
-    if (!correo || !esCorreoValido(correo)) {
-      return respuesta.status(400).json({ mensaje: 'Proporciona un correo válido.' });
-    }
+    const { correo } = req.body;
+    if (!correo || !esCorreoValido(correo)) return res.status(400).json({ mensaje: 'Correo inválido.' });
 
-    const tokenRecuperacionPlano = crypto.randomBytes(32).toString('hex');
-    const tokenRecuperacionHash = crypto.createHash('sha256').update(tokenRecuperacionPlano).digest('hex');
-    const fechaExpiracion = new Date(Date.now() + 3600000); 
+    const tokenPlano = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(tokenPlano).digest('hex');
+    const expiracion = new Date(Date.now() + 3600000);
 
-    const consultaActualizarToken = `
-      UPDATE usuarios
-      SET token_recuperacion = $1, expiracion_recuperacion = $2
-      WHERE correo = $3
-      RETURNING id, correo;
-    `;
-    
-    await consultarBd(consultaActualizarToken, [tokenRecuperacionHash, fechaExpiracion, correo]);
-
-    return respuesta.status(200).json({ 
-      mensaje: 'Si el correo está registrado, se enviarán las instrucciones.' 
-    });
-
+    await consultarBd(`UPDATE usuarios SET token_recuperacion = $1, expiracion_recuperacion = $2 WHERE correo = $3;`, [tokenHash, expiracion, correo]);
+    res.status(200).json({ mensaje: 'Si el correo existe, se enviaron las instrucciones.' });
   } catch (error) {
-    return respuesta.status(500).json({ mensaje: 'Ocurrió un error al procesar la solicitud.' });
+    res.status(500).json({ mensaje: 'Error al procesar solicitud.' });
   }
 };
 
-const restablecerContrasena = async (peticion, respuesta) => {
+const restablecerContrasena = async (req, res) => {
   try {
-    const { token, nuevaContrasena } = peticion.body;
-
-    if (!token || !nuevaContrasena) {
-      return respuesta.status(400).json({ mensaje: 'El token y la nueva contraseña son obligatorios.' });
+    const { token, nuevaContrasena } = req.body;
+    if (!token || !nuevaContrasena || !expContrasena.test(nuevaContrasena)) {
+      return res.status(400).json({ mensaje: 'Datos inválidos o contraseña débil.' });
     }
 
-    const expresionContrasena = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!expresionContrasena.test(nuevaContrasena)) {
-      return respuesta.status(400).json({
-        mensaje: 'La contraseña debe tener mínimo 8 caracteres, mayúsculas, minúsculas, números y un símbolo especial.'
-      });
-    }
-
-    const tokenHashBuscado = crypto.createHash('sha256').update(token).digest('hex');
-
-    const consultaBuscarToken = `
-      SELECT id FROM usuarios
-      WHERE token_recuperacion = $1 AND expiracion_recuperacion > NOW();
-    `;
-    const resultadoBusqueda = await consultarBd(consultaBuscarToken, [tokenHashBuscado]);
-
-    if (resultadoBusqueda.rowCount === 0) {
-      return respuesta.status(400).json({ mensaje: 'El enlace de recuperación es inválido o ha expirado.' });
-    }
-
-    const contrasenaCifrada = await bcrypt.hash(nuevaContrasena, 10);
-    const consultaActualizarContrasena = `
-      UPDATE usuarios
-      SET contrasena_hash = $1, token_recuperacion = NULL, expiracion_recuperacion = NULL
-      WHERE id = $2;
-    `;
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const resultado = await consultarBd(`SELECT id FROM usuarios WHERE token_recuperacion = $1 AND expiracion_recuperacion > NOW();`, [tokenHash]);
     
-    await consultarBd(consultaActualizarContrasena, [contrasenaCifrada, resultadoBusqueda.rows[0].id]);
+    if (resultado.rowCount === 0) return res.status(400).json({ mensaje: 'Token inválido o expirado.' });
 
-    return respuesta.status(200).json({ mensaje: 'La contraseña ha sido restablecida con éxito.' });
+    const hashCifrado = await bcrypt.hash(nuevaContrasena, 10);
+    await consultarBd(`UPDATE usuarios SET contrasena_hash = $1, token_recuperacion = NULL, expiracion_recuperacion = NULL WHERE id = $2;`, [hashCifrado, resultado.rows[0].id]);
+    
+    res.status(200).json({ mensaje: 'Contraseña restablecida.' });
   } catch (error) {
-    return respuesta.status(500).json({ mensaje: 'Ocurrió un error al restablecer la contraseña.' });
+    res.status(500).json({ mensaje: 'Error interno.' });
   }
 };
 
-module.exports = { 
-  registrarUsuario, 
-  iniciarSesion, 
-  obtenerSesionActual,
-  cerrarSesion, 
-  solicitarRecuperacion, 
-  restablecerContrasena 
-};
+module.exports = { registrarUsuario, iniciarSesion, obtenerSesionActual, cerrarSesion, solicitarRecuperacion, restablecerContrasena };

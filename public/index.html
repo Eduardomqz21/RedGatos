@@ -5,106 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#f8f4ee" />
   <meta name="description" content="PetMap - Red de apoyo local para reportar y buscar mascotas perdidas." />
-  
-  <meta property="og:title" content="PetMap | Registro y búsqueda de mascotas" />
-  <meta property="og:description" content="Comunidad local para reportar mascotas perdidas y ayudarles a volver a casa." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://petmap.com/" />
-  
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https:;">
   <title>PetMap | Registro y búsqueda de mascotas</title>
   
+  <link rel="preload" href="estilos.css" as="style">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
   <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
-  
-  <style>
-    :root {
-      --fondo: #f8f4ee; --superficie: #ffffff; --texto: #3f4a56; --texto-suave: #5c6773; 
-      --borde: #e7ddd2; --acento: #2e4a45; --acento-azul: #3a635c;
-      --sombra: 0 18px 45px rgba(100, 92, 81, 0.08);
-    }
-
-    html, body {
-      min-height: 100%;
-      background: radial-gradient(circle at top left, rgba(142, 201, 193, 0.18), transparent 26%), radial-gradient(circle at top right, rgba(149, 189, 230, 0.18), transparent 22%), var(--fondo);
-      color: var(--texto); font-family: system-ui, -apple-system, sans-serif;
-    }
-
-    *:focus-visible { outline: 3px solid #2e4a45 !important; outline-offset: 2px !important; box-shadow: none !important; }
-
-    .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background-color: rgba(201, 76, 76, 0.6) !important; }
-    .marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div { background-color: rgba(201, 76, 76, 0.95) !important; color: #ffffff !important; font-weight: 800 !important; font-size: 14px !important; }
-
-    .navbar { background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(231, 221, 210, 0.9); box-shadow: 0 4px 20px rgba(100, 92, 81, 0.05); }
-
-    .tarjeta-suave { background: var(--superficie); border: 1px solid var(--borde); border-radius: 1.35rem; box-shadow: var(--sombra); }
-    .titulo-principal { font-size: clamp(2rem, 4vw, 3.4rem); line-height: 1.08; font-weight: 800; letter-spacing: -0.03em; color: #33404d; }
-    .texto-secundario { color: var(--texto-suave); }
-
-    .boton-fino { border-radius: 999px; border: 1px solid rgba(94, 167, 160, 0.25); background: linear-gradient(180deg, #f7fffd, #eefaf8); color: #355d57; font-weight: 700; padding: 0.75rem 1.25rem; }
-    .boton-fino:hover, .boton-fino:focus { border-color: rgba(94, 167, 160, 0.42); background: linear-gradient(180deg, #f3fffd, #e8f7f5); }
-    .boton-acento { border-radius: 999px; background: linear-gradient(135deg, var(--acento), var(--acento-azul)); border: 0; color: #fff; font-weight: 800; padding: 0.75rem 1.4rem; box-shadow: 0 8px 20px rgba(46, 74, 69, 0.25); transition: filter 0.2s, opacity 0.2s; }
-    .boton-acento:hover, .boton-acento:focus { color: #fff; filter: brightness(1.1); }
-    .boton-acento:disabled, .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    .pestana-vista { border: 1px solid var(--borde); background: #fff; color: #56616d; border-radius: 999px; padding: 0.6rem 1.1rem; font-weight: 600; transition: all 0.2s; }
-    .pestana-vista.activa, .pestana-vista:hover, .pestana-vista:focus { background: #eef8f6; color: #2e4a45; border-color: rgba(94, 167, 160, 0.28); }
-
-    .form-control, .form-select { border-radius: 0.95rem; border-color: var(--borde); padding: 0.75rem 1rem; }
-    .form-control:focus, .form-select:focus { border-color: var(--acento); box-shadow: 0 0 0 0.2rem rgba(46, 74, 69, 0.15); }
-
-    .estado-vista { display: none; }
-    .estado-vista.activa { display: block; animation: aparecer 250ms ease-out; }
-    @keyframes aparecer { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-
-    .transicion-panel { transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
-    .slide-in-right { animation: slideIn 0.4s forwards; }
-    @keyframes slideIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
-
-    @media print {
-      body > :not(#zona-impresion) { display: none !important; }
-      #zona-impresion { display: block !important; width: 100%; margin: 0; padding: 0; }
-      @page { margin: 0.5cm; }
-      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    }
-
-    .cartel-impresion { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 2rem; background: #fdfbf7; border: 15px solid #2e4a45; color: #333; }
-    .cartel-header { background: #c94c4c; color: white; text-align: center; padding: 1rem; font-size: 3.5rem; font-weight: 900; text-transform: uppercase; letter-spacing: 2px; border-radius: 10px 10px 0 0; }
-
-    .credencial-wrapper { width: 85.6mm; height: 53.98mm; background: #eefaf8; border-radius: 12px; border: 2px solid #2e4a45; padding: 12px; position: relative; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 20px auto; }
-    .credencial-bg-huellas { position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.05; background-image: radial-gradient(#315a55 20%, transparent 20%), radial-gradient(#315a55 20%, transparent 20%); background-size: 20px 20px; background-position: 0 0, 10px 10px; z-index: 0; }
-    .credencial-contenido { position: relative; z-index: 1; display: flex; gap: 12px; height: 100%; }
-    .credencial-foto { width: 35%; height: 100%; object-fit: cover; border-radius: 8px; border: 2px solid #fff; }
-    .credencial-datos { width: 65%; display: flex; flex-direction: column; }
-    .credencial-titulo { color: #315a55; font-size: 1.1rem; font-weight: 800; margin-bottom: 4px; border-bottom: 2px solid #8ec9c1; }
-    .credencial-item { font-size: 0.6rem; margin-bottom: 2px; color: #444; }
-    .credencial-barcode { font-family: 'Libre Barcode 39', cursive; font-size: 2.2rem; align-self: center; margin-top: auto; color: #2e4a45; }
-
-    #mapa-busqueda, #mapa-registro { width: 100%; min-height: 65vh; border-radius: 1rem; border: 1px solid var(--borde); z-index: 1; }
-    #mapa-registro { min-height: 250px; }
-    @media (min-width: 1200px) { #mapa-registro { min-height: 350px; } }
-    @media (max-width: 375px) { .modal-dialog { margin: 0.5rem; } .modal-body { padding: 1rem 0.5rem; } #mapa-estado { border-radius: 0.5rem; } }
-
-    .mini-etiqueta { display: inline-flex; align-items: center; gap: 0.4rem; border-radius: 999px; background: #f2faf8; color: #40706a; padding: 0.4rem 0.8rem; font-weight: 700; font-size: 0.85rem; border: 1px solid rgba(94, 167, 160, 0.16); }
-    .qr-perfil-img { max-width: 300px; border-radius: 1rem; }
-
-    /* === MEMORIAL === */
-    .memorial-bg { background-color: #0b0c10; color: #c5c6c7; border-radius: 20px; position: relative; overflow: hidden; min-height: 75vh; box-shadow: inset 0 0 100px rgba(0,0,0,0.8); }
-    .estrellas { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)), radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)); background-size: 200px 200px; opacity: 0.3; }
-    .foto-flotante { position: absolute; border-radius: 50%; object-fit: cover; box-shadow: 0 0 20px rgba(255, 255, 255, 0.1); animation: flotar 12s infinite ease-in-out alternate; transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.4s; cursor: pointer; border: 2px solid rgba(255,255,255,0.1); }
-    .foto-flotante:hover { transform: scale(1.2) !important; filter: drop-shadow(0 0 25px rgba(255, 215, 0, 0.8)); z-index: 10; border-color: rgba(255, 215, 0, 0.5); }
-    @keyframes flotar { 0% { transform: translateY(0) translateX(0); } 100% { transform: translateY(-40px) translateX(20px); } }
-    .modal-memorial-dark .modal-content { background: rgba(20, 22, 28, 0.85); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); color: #f0f0f0; }
-    .btn-veladora { background: transparent; border: 1px solid rgba(255, 215, 0, 0.4); color: #ffd700; border-radius: 50px; padding: 10px 25px; transition: all 0.3s; }
-    .btn-veladora:hover, .veladora-activa { background: rgba(255, 215, 0, 0.15); box-shadow: 0 0 15px rgba(255, 215, 0, 0.4); }
-    .chispa-animacion { position: fixed; width: 10px; height: 10px; background: #ffd700; border-radius: 50%; pointer-events: none; animation: chispear 1s forwards; z-index: 9999; }
-    @keyframes chispear { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-50px) scale(0); opacity: 0; } }
-  </style>
+  <link href="estilos.css" rel="stylesheet" />
 </head>
 <body>
-  <nav class="navbar sticky-top navbar-expand-lg">
+  <nav class="navbar sticky-top navbar-expand-lg" aria-label="Navegación principal">
     <div class="container-fluid px-3 px-lg-4 py-1">
       <a class="navbar-brand fw-bold text-decoration-none text-reset d-flex align-items-center fs-4" href="/" data-vista="inicio">
         <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="me-2" style="color: var(--acento);" aria-hidden="true">
@@ -127,10 +40,10 @@
             <button type="button" class="btn pestana-vista w-100" data-vista="busqueda">Mapa de Alertas</button>
           </li>
           <li class="nav-item">
-            <button type="button" class="btn btn-dark w-100 fw-bold rounded-pill" style="border:1px solid rgba(255,255,255,0.2)" data-vista="memorial">✨ Memorial</button>
+            <button type="button" class="btn btn-dark w-100 fw-bold rounded-pill" style="border:1px solid rgba(255,255,255,0.2)" data-vista="memorial">Homenajes</button>
           </li>
           <li class="nav-item">
-            <button type="button" class="btn btn-outline-info w-100 fw-bold rounded-pill" data-bs-toggle="modal" data-bs-target="#modalCredencialInvitado">🐾 Credencial Express</button>
+            <button type="button" class="btn btn-outline-info w-100 fw-bold rounded-pill" data-vista="mis-mascotas">Credencial</button>
           </li>
         </ul>
 
@@ -158,7 +71,6 @@
   </nav>
 
   <main class="container-fluid px-3 px-lg-4 py-4 py-lg-5">
-    
     <!-- VISTA INICIO -->
     <section id="vista-inicio" class="estado-vista activa">
       <div class="row g-4 align-items-center justify-content-center">
@@ -189,7 +101,6 @@
                 <label for="regNombre" class="form-label">Nombre</label>
                 <input type="text" id="regNombre" class="form-control" name="nombre" placeholder="Ej. Firulais" maxlength="100" required />
               </div>
-
               <div class="row g-3">
                 <div class="col-6">
                   <label for="regEspecie" class="form-label">Especie</label>
@@ -200,50 +111,42 @@
                   <input type="text" id="regRaza" class="form-control" name="raza" placeholder="Ej. Mestizo, Pug..." maxlength="100" />
                 </div>
               </div>
-
               <div class="mt-3 mb-3">
                 <label for="regFecha" class="form-label">Fecha de nacimiento</label>
                 <input type="date" id="regFecha" class="form-control" name="fecha_nacimiento" />
               </div>
-
               <div class="mt-3 mb-3">
                 <label for="regDesc" class="form-label">Descripción</label>
                 <textarea id="regDesc" class="form-control" name="descripcion" rows="3" placeholder="Señas particulares, color, collar..." maxlength="1000"></textarea>
               </div>
-
               <div class="mb-3">
                 <label for="regFoto" class="form-label">Foto de la mascota</label>
                 <input type="file" id="regFoto" class="form-control" name="foto" accept="image/*" />
               </div>
-
               <div class="mb-3">
                 <label for="regTelefono" class="form-label">Teléfono de contacto</label>
                 <div class="input-group">
                   <select name="lada" id="regLada" class="form-select" style="max-width: 120px;" aria-label="Código de país">
-                    <option value="+52" selected>🇲🇽 +52</option>
-                    <option value="+1">🇺🇸 +1</option>
-                    <option value="+34">🇪🇸 +34</option>
-                    <option value="+57">🇨🇴 +57</option>
-                    <option value="+54">🇦🇷 +54</option>
-                    <option value="+56">🇨🇱 +56</option>
+                    <option value="+52" selected>+52</option>
+                    <option value="+1">+1</option>
+                    <option value="+34">+34</option>
+                    <option value="+57">+57</option>
+                    <option value="+54">+54</option>
+                    <option value="+56">+56</option>
                   </select>
                   <input type="tel" id="regTelefono" class="form-control" name="telefono_dueno" placeholder="3312345678" maxlength="10" pattern="[0-9]{10}" />
                 </div>
               </div>
-
               <div class="mb-3">
                 <label for="regDireccion" class="form-label">Dirección / Colonia</label>
                 <input type="text" id="regDireccion" class="form-control" name="direccion_dueno" placeholder="Ej. Col. Centro, Calle Principal" maxlength="200" />
               </div>
-
               <input type="hidden" id="latitud" name="latitud" />
               <input type="hidden" id="longitud" name="longitud" />
-
               <div class="form-check form-switch my-4">
                 <input class="form-check-input fs-4" type="checkbox" role="switch" id="esta_perdida" name="esta_perdida" />
                 <label class="form-check-label fw-bold mt-1 ms-2" for="esta_perdida">¿Esta mascota está perdida?</label>
               </div>
-
               <button type="submit" class="btn boton-acento w-100 py-3 fs-5" id="btnSubmitMascota">Guardar Mascota</button>
             </form>
           </div>
@@ -322,13 +225,16 @@
     <!-- VISTA MIS MASCOTAS -->
     <section id="vista-mis-mascotas" class="estado-vista">
       <h2 class="h3 fw-bold mb-4">Mis Mascotas</h2>
+      <p class="text-muted">Selecciona una de tus mascotas para ver su perfil o generar su credencial de identificación.</p>
       <div id="contenedorMisMascotas" class="row g-4" aria-live="polite"></div>
     </section>
 
     <!-- VISTA ADMIN -->
     <section id="vista-admin" class="estado-vista">
       <h2 class="h3 fw-bold mb-4 text-danger">Centro de Comando (Admin)</h2>
+      
       <div class="row g-4 mb-4">
+        <!-- Columna Formulario Admin -->
         <div class="col-12 col-xl-4">
           <div class="tarjeta-suave p-4 h-100">
             <div class="d-flex align-items-center justify-content-between mb-3">
@@ -359,9 +265,15 @@
             </form>
           </div>
         </div>
+
+        <!-- Columna Tabla Usuarios -->
         <div class="col-12 col-xl-8">
-          <div class="tarjeta-suave p-0 overflow-hidden h-100">
-            <div class="table-responsive">
+          <div class="tarjeta-suave p-0 overflow-hidden h-100 d-flex flex-column">
+            <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center">
+              <h4 class="h6 mb-0 fw-bold">Gestión de Usuarios</h4>
+              <input type="search" id="filtroAdminUsuarios" class="form-control form-control-sm w-auto" placeholder="Buscar usuario..." />
+            </div>
+            <div class="table-responsive flex-grow-1">
               <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                   <tr>
@@ -377,11 +289,12 @@
           </div>
         </div>
       </div>
-      <div class="tarjeta-suave p-0 overflow-hidden">
+
+      <!-- Tabla de Mascotas Registradas -->
+      <div class="tarjeta-suave p-0 overflow-hidden mb-4">
         <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center">
-          <h4 class="h6 mb-0 fw-bold">Mascotas Registradas</h4>
-          <label for="filtroAdminMascotas" class="visually-hidden">Filtrar mascotas</label>
-          <input type="search" id="filtroAdminMascotas" class="form-control form-control-sm w-auto" placeholder="Filtrar por nombre..." />
+          <h4 class="h6 mb-0 fw-bold">Gestión de Mascotas Registradas</h4>
+          <input type="search" id="filtroAdminMascotas" class="form-control form-control-sm w-auto" placeholder="Buscar por mascota, especie o teléfono..." />
         </div>
         <div class="table-responsive">
           <table class="table table-hover align-middle mb-0">
@@ -391,10 +304,32 @@
                 <th scope="col">Especie</th>
                 <th scope="col">Estado</th>
                 <th scope="col">Contacto</th>
-                <th class="text-end pe-4" scope="col">Borrar</th>
+                <th class="text-end pe-4" scope="col">Eliminar</th>
               </tr>
             </thead>
             <tbody id="tablaAdminMascotas" aria-live="polite"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabla de Memoriales (Admin) -->
+      <div class="tarjeta-suave p-0 overflow-hidden">
+        <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center">
+          <h4 class="h6 mb-0 fw-bold">Gestión de Homenajes (Memorial)</h4>
+          <input type="search" id="filtroAdminMemorial" class="form-control form-control-sm w-auto" placeholder="Buscar homenaje..." />
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-4" scope="col">Mascota</th>
+                <th scope="col">Especie</th>
+                <th scope="col">Fallecimiento</th>
+                <th scope="col">Mensaje</th>
+                <th class="text-end pe-4" scope="col">Eliminar</th>
+              </tr>
+            </thead>
+            <tbody id="tablaAdminMemorial" aria-live="polite"></tbody>
           </table>
         </div>
       </div>
@@ -517,53 +452,12 @@
         <div class="text-center position-relative" style="z-index: 2;">
           <h2 class="display-5 fw-bold text-white mb-2" style="text-shadow: 0 4px 10px rgba(0,0,0,0.5);">El Puente del Arcoíris</h2>
           <p class="fs-5 text-light opacity-75">Un espacio de respeto y memoria para los que ya no están.</p>
-          <button class="btn btn-outline-light rounded-pill px-4 mt-3" data-bs-toggle="modal" data-bs-target="#modalCrearMemorial">Rendir un homenaje</button>
+          <button class="btn btn-outline-light rounded-pill px-4 mt-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalCrearMemorial">Rendir un homenaje</button>
         </div>
-        
         <!-- Contenedor inmersivo para fotos flotantes -->
-        <div id="espacioMemorialMap" class="w-100 mt-5 position-relative" style="height: 500px;">
-           <!-- JS inyectará las fotos aquí -->
-        </div>
+        <div id="espacioMemorialMap" class="w-100 mt-5 position-relative" style="height: 500px;"></div>
       </div>
     </section>
-
-    <!-- Modal Credencial Express -->
-    <div class="modal fade" id="modalCredencialInvitado" tabindex="-1" aria-hidden="true" role="dialog" aria-labelledby="modalCredencialTitulo">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content tarjeta-suave border-0">
-          <div class="modal-header border-0 pb-0">
-            <h5 class="modal-title fw-bold text-info" id="modalCredencialTitulo">Generar ID (Invitado)</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar modal"></button>
-          </div>
-          <div class="modal-body">
-            <form id="formCredencialInvitado" class="d-grid gap-2">
-              <label for="invNombre" class="visually-hidden">Nombre</label>
-              <input type="text" id="invNombre" class="form-control" placeholder="Nombre de la mascota" required>
-              <div class="d-flex gap-2">
-                <label for="invEspecie" class="visually-hidden">Especie</label>
-                <input type="text" id="invEspecie" class="form-control" placeholder="Especie (Perro/Gato)" required>
-                
-                <label for="invRaza" class="visually-hidden">Raza</label>
-                <input type="text" id="invRaza" class="form-control" placeholder="Raza">
-              </div>
-              <label for="invFechaNac" class="form-label small mb-0 mt-1">Fecha de nacimiento</label>
-              <input type="date" id="invFechaNac" class="form-control" aria-label="Fecha de nacimiento">
-              
-              <label for="invDueno" class="visually-hidden">Dueño</label>
-              <input type="text" id="invDueno" class="form-control" placeholder="Nombre del Dueño" required>
-              
-              <label for="invTelefono" class="visually-hidden">Teléfono</label>
-              <input type="tel" id="invTelefono" class="form-control" placeholder="Teléfono" required>
-              
-              <label for="invFoto" class="form-label small mb-0 mt-1">Foto opcional</label>
-              <input type="file" id="invFoto" class="form-control" accept="image/*">
-              
-              <button type="submit" id="btnGenerarInvitado" class="btn boton-acento mt-3">Generar e Imprimir</button>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Modal Cambio Estado -->
     <div class="modal fade" id="modalMapaEstado" tabindex="-1" aria-hidden="true" role="dialog" aria-labelledby="modalMapaTitulo">
@@ -607,38 +501,46 @@
             <h3 id="modalMemNombre" class="fw-bold text-white mb-1">Nombre</h3>
             <p id="modalMemFechas" class="small text-secondary mb-4">Fechas</p>
             <p id="modalMemMensaje" class="fs-5 fst-italic text-light opacity-75 mb-5">"Mensaje"</p>
-            
-            <button id="btnEncenderVeladora" class="btn btn-veladora fs-5 w-100 mb-2">
-              🕯️ Encender una veladora
-            </button>
+            <button id="btnEncenderVeladora" class="btn btn-veladora fs-5 w-100 mb-2">Encender veladora</button>
             <div class="small text-secondary mt-2"><span id="modalMemContador" class="fw-bold text-white">0</span> veladoras encendidas</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- MODAL: CREAR MEMORIAL -->
+    <!-- MODAL: CREAR MEMORIAL REDISEÑADO -->
     <div class="modal fade modal-memorial-dark" id="modalCrearMemorial" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content rounded-4">
-          <div class="modal-header border-0 pb-0">
-            <h5 class="modal-title text-white">Registrar Homenaje</h5>
+        <div class="modal-content rounded-4 border-0">
+          <div class="modal-header border-0 border-bottom border-secondary pb-3">
+            <h5 class="modal-title fw-bold text-white">Crear un Homenaje</h5>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
           </div>
-          <div class="modal-body">
-            <form id="formularioMemorial" class="d-grid gap-3">
-              <input type="text" name="nombre" class="form-control bg-dark text-white border-secondary" placeholder="Nombre" required>
-              <input type="text" name="especie" class="form-control bg-dark text-white border-secondary" placeholder="Especie (Ej. Perro, Gato)" required>
-              
-              <label class="form-label text-secondary small mb-0 mt-2">Fecha de fallecimiento</label>
-              <input type="date" name="fecha_fallecimiento" class="form-control bg-dark text-white border-secondary" required title="Fecha de fallecimiento">
-              
-              <textarea name="mensaje" class="form-control bg-dark text-white border-secondary" placeholder="Un mensaje de despedida..." rows="3" required></textarea>
-              
-              <label class="form-label text-secondary small mb-0 mt-2">Fotografía</label>
-              <input type="file" name="foto" class="form-control bg-dark text-white border-secondary" accept="image/*" required>
-              
-              <button type="submit" id="btnSubmitMemorial" class="btn btn-light mt-3 fw-bold">Crear Homenaje</button>
+          <div class="modal-body p-4">
+            <form id="formularioMemorial" class="d-grid gap-3 text-start">
+              <div>
+                <label class="form-label text-light small fw-bold mb-1">Nombre de la mascota</label>
+                <input type="text" name="nombre" class="form-control bg-dark text-white border-secondary" placeholder="Ej. Max" required>
+              </div>
+              <div class="row g-2">
+                <div class="col-6">
+                  <label class="form-label text-light small fw-bold mb-1">Especie</label>
+                  <input type="text" name="especie" class="form-control bg-dark text-white border-secondary" placeholder="Ej. Perro" required>
+                </div>
+                <div class="col-6">
+                  <label class="form-label text-light small fw-bold mb-1">Fecha de partida</label>
+                  <input type="date" name="fecha_fallecimiento" class="form-control bg-dark text-white border-secondary" required>
+                </div>
+              </div>
+              <div>
+                <label class="form-label text-light small fw-bold mb-1">Un mensaje de despedida</label>
+                <textarea name="mensaje" class="form-control bg-dark text-white border-secondary" placeholder="Escribe aquí unas palabras en su honor..." rows="3" maxlength="300" required></textarea>
+              </div>
+              <div>
+                <label class="form-label text-light small fw-bold mb-1">Fotografía para el recuerdo</label>
+                <input type="file" name="foto" class="form-control bg-dark text-white border-secondary" accept="image/*" required>
+              </div>
+              <button type="submit" id="btnSubmitMemorial" class="btn btn-light mt-3 py-2 fw-bold w-100">Guardar Homenaje</button>
             </form>
           </div>
         </div>
