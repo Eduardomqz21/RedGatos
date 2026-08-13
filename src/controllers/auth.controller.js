@@ -18,12 +18,12 @@ const registrarUsuario = async (req, res) => {
       return res.status(400).json({ mensaje: 'Correo obligatorio y válido.' });
     }
     if (!contrasena || typeof contrasena !== 'string' || contrasena.length > 128 || !expContrasena.test(contrasena)) {
-      return res.status(400).json({ mensaje: 'Contraseña inválida. Mínimo 8 caracteres, mayúsculas, minúsculas, números y símbolo especial.' });
+      return res.status(400).json({ mensaje: 'Contraseña inválida. Revisa los requisitos de seguridad.' });
     }
 
     const contrasenaCifrada = await bcrypt.hash(contrasena, 10);
     
-    // CORRECCIÓN: Se fuerza explícitamente el rol 'usuario' en el INSERT
+    // Se fuerza explícitamente el rol 'usuario' en el INSERT
     const consulta = `INSERT INTO usuarios (nombre, correo, contrasena_hash, rol) VALUES ($1, $2, $3, 'usuario') RETURNING id, nombre, correo, rol;`;
     const resultado = await consultarBd(consulta, [nombre.trim(), correo.trim(), contrasenaCifrada]);
 
@@ -101,9 +101,20 @@ const solicitarRecuperacion = async (req, res) => {
 
     const tokenPlano = crypto.randomBytes(32).toString('hex');
     const tokenHash = crypto.createHash('sha256').update(tokenPlano).digest('hex');
-    const expiracion = new Date(Date.now() + 3600000);
+    const expiracion = new Date(Date.now() + 3600000); // 1 hora
 
-    await consultarBd(`UPDATE usuarios SET token_recuperacion = $1, expiracion_recuperacion = $2 WHERE correo = $3;`, [tokenHash, expiracion, correo]);
+    const resultado = await consultarBd(`UPDATE usuarios SET token_recuperacion = $1, expiracion_recuperacion = $2 WHERE correo = $3 RETURNING id;`, [tokenHash, expiracion, correo]);
+    
+    if (resultado.rowCount > 0) {
+      // Como no hay servicio de emails configurado en backend, imprimimos la ruta completa en consola para que puedas testear.
+      const urlFrontend = req.headers['x-forwarded-proto'] || req.protocol;
+      const hostFrontend = req.get('host');
+      console.log(`\n===========================================`);
+      console.log(`[TEST MODO LOCAL] ENLACE DE RECUPERACIÓN:`);
+      console.log(`${urlFrontend}://${hostFrontend}/?token=${tokenPlano}`);
+      console.log(`===========================================\n`);
+    }
+
     res.status(200).json({ mensaje: 'Si el correo existe, se enviaron las instrucciones.' });
   } catch (error) {
     res.status(500).json({ mensaje: 'Error al procesar solicitud.' });
@@ -125,9 +136,9 @@ const restablecerContrasena = async (req, res) => {
     const hashCifrado = await bcrypt.hash(nuevaContrasena, 10);
     await consultarBd(`UPDATE usuarios SET contrasena_hash = $1, token_recuperacion = NULL, expiracion_recuperacion = NULL WHERE id = $2;`, [hashCifrado, resultado.rows[0].id]);
     
-    res.status(200).json({ mensaje: 'Contraseña restablecida.' });
+    res.status(200).json({ mensaje: 'Contraseña restablecida correctamente.' });
   } catch (error) {
-    res.status(500).json({ mensaje: 'Error interno.' });
+    res.status(500).json({ mensaje: 'Error interno del servidor.' });
   }
 };
 
