@@ -1,0 +1,11 @@
+{
+  "id": "clasica",
+  "nombre": "Clásica",
+  "tipo": "credencial",
+  "descripcion": "Diseño oficial de PetMap estilo tarjeta de identificación.",
+  "version": "1.0.0",
+  "autor": "PetMap",
+  "activo": true,
+  "tamano": "85.6mm x 53.98mm",
+  "orientacion": "horizontal"
+}

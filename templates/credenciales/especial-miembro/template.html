@@ -1,0 +1,42 @@
+<!-- PÁGINA 1: FRENTE -->
+<div class="credencial-especial-pagina frente">
+  <div class="cred-bg-premium"></div>
+  <div class="cred-header">
+    <div class="cred-brand">PETMAP</div>
+    <div class="cred-badge">MIEMBRO OFICIAL</div>
+  </div>
+  
+  <div class="cred-cuerpo">
+    <div class="cred-foto-col">
+      <img src="{{foto}}" class="cred-foto" />
+    </div>
+    <div class="cred-info-col">
+      <div class="cred-nombre">{{nombre}}</div>
+      <div class="cred-row-data"><strong>Especie:</strong> {{especie}}</div>
+      <div class="cred-row-data"><strong>Raza:</strong> {{raza}}</div>
+      <div class="cred-row-data"><strong>Nacimiento:</strong> {{fecha_nacimiento}}</div>
+      <div class="cred-row-data"><strong>Dueño:</strong> {{nombre_dueno}}</div>
+      <div class="cred-row-data"><strong>Teléfono:</strong> {{telefono}}</div>
+      
+      <!-- Código de barras en lugar del estado -->
+      <div class="cred-barcode-front">*PETMAP*</div>
+    </div>
+  </div>
+</div>
+
+<!-- PÁGINA 2: REVERSO -->
+<div class="credencial-especial-pagina reverso">
+  <div class="cred-rev-header">RED DE APOYO LOCAL</div>
+  
+  <div class="cred-rev-cuerpo">
+    <p class="cred-instruccion">Escanea el código QR para consultar el perfil oficial en tiempo real o reportar información a la familia.</p>
+    
+    <div class="cred-qr-container">
+      <img src="{{qr_perfil}}" class="cred-qr" />
+    </div>
+    
+    <div class="cred-id">ID: <span>{{curm}}</span></div>
+  </div>
+  
+  <div class="cred-rev-footer">petmap.com</div>
+</div>

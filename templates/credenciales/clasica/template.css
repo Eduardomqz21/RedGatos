@@ -1,0 +1,101 @@
+/* Aislamiento de estilos: Credencial Clásica */
+@media print {
+  @page {
+    size: 85.6mm 53.98mm; /* CR80 - Tamaño estándar de credencial */
+    margin: 0;
+  }
+}
+
+.plantilla-credencial-clasica {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.plantilla-credencial-clasica .credencial-clasica-container {
+  width: 85.6mm;
+  height: 53.98mm;
+  background: #eefaf8;
+  border-radius: 4mm;
+  border: 2px solid #2e4a45;
+  padding: 4mm;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #333;
+}
+
+.plantilla-credencial-clasica .credencial-bg-huellas {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  opacity: 0.05;
+  background-image: radial-gradient(#315a55 20%, transparent 20%), radial-gradient(#315a55 20%, transparent 20%);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+  z-index: 0;
+}
+
+.plantilla-credencial-clasica .credencial-contenido {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 3mm;
+  height: 100%;
+}
+
+.plantilla-credencial-clasica .credencial-foto-wrapper {
+  width: 35%;
+  height: 100%;
+}
+
+.plantilla-credencial-clasica .credencial-foto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 2mm;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.plantilla-credencial-clasica .credencial-datos {
+  width: 65%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.plantilla-credencial-clasica .credencial-titulo {
+  color: #315a55;
+  font-size: 13pt;
+  font-weight: 900;
+  margin-bottom: 1.5mm;
+  border-bottom: 1.5px solid #8ec9c1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plantilla-credencial-clasica .credencial-item {
+  font-size: 7.5pt;
+  margin-bottom: 0.8mm;
+  color: #444;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.plantilla-credencial-clasica .credencial-barcode {
+  font-family: 'Libre Barcode 39', cursive;
+  font-size: 26pt;
+  align-self: center;
+  margin-top: auto;
+  color: #2e4a45;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}

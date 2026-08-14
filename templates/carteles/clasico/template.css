@@ -1,0 +1,107 @@
+@media print {
+  @page { 
+      size: A4 portrait; 
+      margin: 10mm; 
+  }
+  body { margin: 0; padding: 0; background: white; }
+  body > :not(#zona-impresion) { display: none !important; }
+  
+  /* Asegura impresión a color */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+}
+
+.plantilla-cartel-clasico { 
+  width: 100%; 
+  display: flex; 
+  justify-content: center; 
+}
+
+.cartel-clasico-container {
+  /* Ajustamos el alto máximo para garantizar que entre en 1 hoja A4 */
+  width: 190mm; 
+  height: 275mm; /* Alto fijo seguro para A4 (297mm - 20mm de márgenes) */
+  background: #fff;
+  padding: 5mm; 
+  box-sizing: border-box; 
+  font-family: 'Arial', sans-serif;
+  overflow: hidden; /* Evita que el contenido se desborde */
+}
+
+.cartel-inner-border {
+  border: 8px solid #c94c4c; 
+  height: 100%; 
+  padding: 6mm; 
+  box-sizing: border-box; 
+  display: flex; 
+  flex-direction: column;
+}
+
+.cartel-header { text-align: center; color: white; margin: -6mm -6mm 5mm -6mm; padding: 8mm 0; }
+.cartel-header.perdida { background: #c94c4c; }
+.cartel-header.a-salvo { background: #2a7d4f; }
+.cartel-header span { font-size: 70pt; font-weight: 900; letter-spacing: 4px; line-height: 1; }
+
+.cartel-nombre {
+  text-align: center; font-size: 55pt; font-weight: 900; color: #1a1a1a; margin: 0 0 6mm 0; text-transform: uppercase;
+  line-height: 1; word-break: break-word;
+}
+
+/* Área central de dos columnas */
+.cartel-cuerpo { display: flex; gap: 8mm; flex: 1; overflow: hidden; }
+
+/* Columna Izquierda (Foto y datos) */
+.cartel-col-izq { flex: 1.2; display: flex; flex-direction: column; }
+.cartel-foto { width: 100%; height: 85mm; object-fit: cover; border: 4px solid #333; border-radius: 4px; box-shadow: 4px 4px 0 rgba(0,0,0,0.1); margin-bottom: 6mm; }
+
+.cartel-datos { font-size: 16pt; margin-bottom: 5mm; }
+.dato-inline { margin: 0 0 2mm 0; border-bottom: 2px dotted #ccc; padding-bottom: 2mm; }
+
+.cartel-desc-box { background: #f9f9f9; border-left: 6px solid #c94c4c; padding: 4mm; flex: 1; }
+.desc-title { font-size: 13pt; font-weight: 900; color: #c94c4c; margin-bottom: 2mm; }
+.desc-text { font-size: 14pt; line-height: 1.3; color: #333; }
+
+/* Columna Derecha (Mapa y QR) */
+.cartel-col-der { 
+  flex: 1; 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; /* Centra el contenido horizontalmente */
+  justify-content: flex-start;
+}
+
+.cartel-mapa-box { 
+  border: 3px solid #333; 
+  border-radius: 4px; 
+  overflow: hidden; 
+  width: 100%; /* Toma todo el ancho de su columna */
+  margin-bottom: 6mm;
+}
+.mapa-titulo { background: #333; color: #fff; text-align: center; font-weight: bold; font-size: 12pt; padding: 2mm; }
+.cartel-mapa-img { 
+  width: 100%; 
+  height: 65mm; /* Ajuste de altura para que el QR quepa mejor abajo */
+  object-fit: cover; 
+  display: block; 
+}
+.cartel-mapa-box.fallback { height: 65mm; display: flex; align-items: center; justify-content: center; background: #eee; }
+.fallback-txt { text-align: center; font-weight: bold; color: #777; padding: 5mm; font-size: 12pt; }
+
+.cartel-qr-box { 
+  text-align: center; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.cartel-qr { width: 45mm; height: 45mm; border: 2px solid #ccc; padding: 2mm; background: #fff; }
+.qr-text { font-size: 12pt; font-weight: bold; color: #666; margin-top: 2mm; line-height: 1.2; text-align: center;}
+
+/* Footer */
+.cartel-footer { 
+  margin: auto -6mm -6mm -6mm; 
+  background: #1a1a1a; 
+  color: white; 
+  padding: 5mm; 
+  text-align: center; 
+}
+.footer-lbl { font-size: 14pt; font-weight: bold; margin-bottom: 2mm; color: #f2f2f2; }
+.footer-tel { font-size: 48pt; font-weight: 900; line-height: 1; letter-spacing: 2px; color: #ffd700; }

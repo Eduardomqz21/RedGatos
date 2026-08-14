@@ -1,0 +1,52 @@
+<div class="cartel-clasico-container">
+  <div class="cartel-inner-border">
+    {{#if esta_perdida}}
+    <div class="cartel-header perdida"><span>¡SE BUSCA!</span></div>
+    {{/if}}
+    {{#if no_perdida}}
+    <div class="cartel-header a-salvo"><span>A SALVO</span></div>
+    {{/if}}
+
+    <h1 class="cartel-nombre">{{nombre}}</h1>
+    
+    <div class="cartel-cuerpo">
+      <div class="cartel-col-izq">
+        <img src="{{foto}}" class="cartel-foto" alt="Foto de la mascota" />
+        <div class="cartel-datos">
+          <p class="dato-inline"><strong>ESPECIE:</strong> {{especie}}</p>
+          <p class="dato-inline"><strong>RAZA:</strong> {{raza}}</p>
+        </div>
+        <div class="cartel-desc-box">
+          <div class="desc-title">SEÑAS PARTICULARES:</div>
+          <div class="desc-text">{{descripcion}}</div>
+        </div>
+      </div>
+      
+      <div class="cartel-col-der">
+        {{#if mapa_extravio}}
+        <div class="cartel-mapa-box">
+          <div class="mapa-titulo">📍 ÚLTIMA ZONA VISTA</div>
+          <img src="{{mapa_extravio}}" class="cartel-mapa-img" />
+        </div>
+        {{/if}}
+        {{#if mapa_fallo}}
+        <div class="cartel-mapa-box fallback">
+          <div class="fallback-txt">📍 Mapa de ubicación temporalmente no disponible</div>
+        </div>
+        {{/if}}
+        
+        <div class="cartel-qr-box">
+          <img src="{{qr}}" class="cartel-qr" />
+          <div class="qr-text">Escanea para acceder<br/>al perfil en vivo</div>
+        </div>
+      </div>
+    </div>
+
+    {{#if esta_perdida}}
+    <div class="cartel-footer">
+      <div class="footer-lbl">SI TIENES INFORMACIÓN LLAMA O ENVÍA MENSAJE AL:</div>
+      <div class="footer-tel">{{telefono}}</div>
+    </div>
+    {{/if}}
+  </div>
+</div>

@@ -1,0 +1,7 @@
+{
+  "id": "clasico",
+  "nombre": "Clásico",
+  "tipo": "cartel",
+  "descripcion": "Cartel clásico rediseñado, formato A4.",
+  "version": "2.0.0"
+}
