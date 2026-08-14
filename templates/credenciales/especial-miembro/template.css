@@ -1,0 +1,98 @@
+@media print {
+  /* Establecemos el tamaño de la hoja a A4 normal para que quepan ambas caras */
+  @page { size: A4 portrait; margin: 15mm; }
+  body { margin: 0; padding: 0; background: white; }
+  body > :not(#zona-impresion) { display: none !important; }
+  
+  /* Centramos el contenedor principal en la hoja impresa */
+  #zona-impresion { 
+      width: 100%; 
+      display: flex !important; 
+      justify-content: center;
+      padding-top: 20mm; 
+  }
+}
+
+/* Contenedor que agrupa ambas caras */
+.plantilla-credencial-especial-miembro { 
+  display: flex; 
+  flex-direction: column; /* Coloca una cara debajo de la otra */
+  gap: 15mm; /* Espacio entre el frente y el reverso */
+  align-items: center; 
+}
+
+/* Estilo base para cada tarjeta (Mantiene el tamaño oficial CR80) */
+.credencial-especial-pagina {
+  width: 85.6mm; 
+  height: 53.98mm; 
+  box-sizing: border-box; 
+  position: relative; 
+  overflow: hidden;
+  font-family: system-ui, sans-serif; 
+  border-radius: 3mm;
+  /* Borde sutil para indicar por dónde recortar al imprimir */
+  border: 1px dashed #999; 
+  /* Aseguramos que los colores de fondo se impriman */
+  -webkit-print-color-adjust: exact !important; 
+  print-color-adjust: exact !important;
+}
+
+/* =========================================
+   FRENTE
+========================================= */
+.credencial-especial-pagina.frente {
+  background: linear-gradient(135deg, #233a36 0%, #152421 100%);
+  color: #fff; 
+  /* Eliminamos el salto de página para que imprima junto al reverso */
+  page-break-after: avoid; 
+  break-after: avoid;
+}
+
+.cred-bg-premium {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.05;
+  background-image: repeating-linear-gradient(45deg, #ffffff 0, #ffffff 1px, transparent 1px, transparent 10px);
+}
+
+.cred-header {
+  position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center;
+  padding: 3mm 4mm; border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+.cred-brand { font-size: 12pt; font-weight: 900; letter-spacing: 1px; color: #e7ddd2; }
+.cred-badge { font-size: 5.5pt; font-weight: 700; background: rgba(231,221,210,0.2); padding: 1mm 2mm; border-radius: 999px; letter-spacing: 0.5px; }
+
+.cred-cuerpo { position: relative; z-index: 2; display: flex; padding: 3mm 4mm; gap: 3mm; height: calc(100% - 12mm); }
+.cred-foto-col { width: 32%; height: 100%; }
+.cred-foto { width: 100%; height: 100%; object-fit: cover; border-radius: 2mm; border: 1.5px solid #e7ddd2; }
+.cred-info-col { width: 68%; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 1mm; }
+
+.cred-nombre { font-size: 15pt; font-weight: 900; color: #fff; margin-bottom: 1mm; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-transform: uppercase; }
+.cred-row-data { font-size: 7.5pt; color: #aebdbb; margin-bottom: 0.5mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cred-row-data strong { color: #e7ddd2; font-weight: 600; }
+
+.cred-barcode-front {
+  font-family: 'Libre Barcode 39', cursive;
+  font-size: 26pt;
+  color: #e7ddd2;
+  margin-top: auto;
+  align-self: flex-start;
+  line-height: 0.8;
+  opacity: 0.9;
+}
+
+/* =========================================
+   REVERSO
+========================================= */
+.credencial-especial-pagina.reverso { 
+  background: #fdfcfb; 
+  color: #333; 
+}
+
+.cred-rev-header { background: #233a36; color: #fff; text-align: center; font-size: 8pt; font-weight: 800; padding: 2mm; letter-spacing: 1px; }
+.cred-rev-cuerpo { padding: 3mm 6mm; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; height: calc(100% - 13mm); }
+.cred-instruccion { font-size: 7pt; line-height: 1.3; color: #555; margin: 0 0 2mm 0; font-weight: 500; }
+.cred-qr-container { padding: 1mm; background: #fff; border: 1px solid #ccc; border-radius: 1.5mm; display: inline-block; margin-bottom: 2mm; }
+.cred-qr { width: 18mm; height: 18mm; display: block; }
+.cred-id { font-size: 6.5pt; color: #777; font-weight: 600; }
+.cred-id span { color: #333; font-weight: 800; }
+.cred-rev-footer { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 6pt; font-weight: bold; color: #999; padding-bottom: 1.5mm; }

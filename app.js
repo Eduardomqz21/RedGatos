@@ -50,9 +50,6 @@ aplicacion.use(cors({
       ? process.env.CORS_ORIGIN.split(',').map(o => o.trim().replace(/\/$/, '')) 
       : [];
     
-    // 1. Permitir si no hay origen explícito
-    // 2. Permitir si coincide con el .env
-    // 3. Permitir automáticamente localhost y los túneles de Cloudflare para no tener que editar el .env a cada rato
     if (!origin || 
         origenesPermitidos.includes(origin) || 
         origin.startsWith('http://localhost') || 
@@ -82,6 +79,9 @@ aplicacion.use(express.static(path.join(__dirname, 'public'), {
     }
   }
 }));
+
+// ¡¡NUEVA LÍNEA!! PARA SERVIR LA CARPETA TEMPLATES QUE ESTÁ AFUERA DE PUBLIC
+aplicacion.use('/templates', express.static(path.join(__dirname, 'templates')));
 
 // Servir uploads estáticamente pero restringiendo ejecución
 aplicacion.use('/uploads', express.static(path.resolve(BASE_UPLOAD_DIR), {

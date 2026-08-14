@@ -1,0 +1,7 @@
+{
+  "id": "especial-miembro",
+  "nombre": "Especial Miembro",
+  "tipo": "credencial",
+  "descripcion": "Credencial premium de dos caras para impresión física.",
+  "version": "1.0.0"
+}

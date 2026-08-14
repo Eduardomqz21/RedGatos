@@ -40,7 +40,6 @@ html, body {
 .pestana-vista { border: 1px solid var(--borde); background: #fff; color: #56616d; border-radius: 999px; padding: 0.6rem 1.1rem; font-weight: 600; transition: all 0.2s; }
 .pestana-vista.activa, .pestana-vista:hover { background: #eef8f6; color: var(--acento); border-color: rgba(94, 167, 160, 0.28); }
 
-/* MEJORAS DE UX EN INPUTS PARA AUTENTICACIÓN */
 .form-control, .form-select { border-radius: 0.95rem; border: 1.5px solid var(--borde); padding: 0.75rem 1rem; transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s; background-color: #fdfcfb; }
 .form-control:focus, .form-select:focus { border-color: var(--acento); box-shadow: 0 0 0 4px rgba(46, 74, 69, 0.1); background-color: #fff; }
 .form-control.is-invalid { border-color: var(--rojo); background-image: none; box-shadow: 0 0 0 4px rgba(201, 76, 76, 0.1); }
@@ -48,11 +47,9 @@ html, body {
 .invalid-feedback { font-size: 0.85rem; font-weight: 500; color: var(--rojo); margin-top: 0.4rem; padding-left: 0.3rem; animation: aparecer 0.2s ease-out; }
 .form-control:disabled { background-color: #f3f0ec; opacity: 0.8; }
 
-/* BOTÓN MOSTRAR/OCULTAR CONTRASEÑA */
 .btn-toggle-password { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 4px; color: var(--texto-suave); cursor: pointer; transition: color 0.2s; display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 50%; }
 .btn-toggle-password:hover, .btn-toggle-password:focus { color: var(--acento); outline: none; background: rgba(46, 74, 69, 0.05); }
 
-/* LISTA DE REQUISITOS DE CONTRASEÑA */
 .req-list { background: #fdfcfb; border: 1px solid var(--borde); border-radius: 0.8rem; padding: 1rem; margin-top: 0.5rem; }
 .req-item { font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; transition: color 0.2s; }
 .req-item:last-child { margin-bottom: 0; }
@@ -69,25 +66,15 @@ html, body {
 .slide-in-right { animation: slideIn 0.4s forwards; }
 @keyframes slideIn { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
 
-/* ALERTAS INLINE GLOBALES (Login) */
 .alerta-formulario { background: #fff3f3; border-left: 4px solid var(--rojo); color: #a13030; padding: 1rem; border-radius: 0.5rem; font-weight: 500; font-size: 0.9rem; margin-bottom: 1.5rem; animation: aparecer 0.3s; }
 .alerta-formulario.exito { background: #f0fdf4; border-left-color: var(--verde); color: #166534; }
 
 @media print {
   body > :not(#zona-impresion) { display: none !important; }
   #zona-impresion { display: block !important; width: 100%; margin: 0; padding: 0; }
-  @page { margin: 0.5cm; }
+  /* Removido el @page global porque se inyecta por plantilla ahora */
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
-
-.credencial-wrapper { width: 85.6mm; height: 53.98mm; background: #eefaf8; border-radius: 12px; border: 2px solid var(--acento); padding: 12px; position: relative; overflow: hidden; margin: 20px auto; }
-.credencial-bg-huellas { position: absolute; top: 0; left: 0; right: 0; bottom: 0; opacity: 0.05; background-image: radial-gradient(#315a55 20%, transparent 20%), radial-gradient(#315a55 20%, transparent 20%); background-size: 20px 20px; background-position: 0 0, 10px 10px; z-index: 0; }
-.credencial-contenido { position: relative; z-index: 1; display: flex; gap: 12px; height: 100%; }
-.credencial-foto { width: 35%; height: 100%; object-fit: cover; border-radius: 8px; border: 2px solid #fff; }
-.credencial-datos { width: 65%; display: flex; flex-direction: column; overflow: hidden; }
-.credencial-titulo { color: #315a55; font-size: 1.1rem; font-weight: 800; margin-bottom: 4px; border-bottom: 2px solid #8ec9c1; }
-.credencial-item { font-size: 0.6rem; margin-bottom: 2px; color: #444; }
-.credencial-barcode { font-family: 'Libre Barcode 39', cursive; font-size: 2.2rem; align-self: center; margin-top: auto; color: var(--acento); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 #mapa-busqueda, #mapa-registro { width: 100%; min-height: 65vh; border-radius: 1rem; border: 1px solid var(--borde); z-index: 1; }
 #mapa-registro { min-height: 250px; }
@@ -99,7 +86,6 @@ html, body {
 .mini-etiqueta { display: inline-flex; align-items: center; gap: 0.4rem; border-radius: 999px; background: #f2faf8; color: #40706a; padding: 0.4rem 0.8rem; font-weight: 700; font-size: 0.85rem; border: 1px solid rgba(94, 167, 160, 0.16); }
 .qr-perfil-img { max-width: 300px; border-radius: 1rem; }
 
-/* ANIMACIONES DEL MEMORIAL */
 .memorial-bg { background-color: #0b0c10; color: #c5c6c7; border-radius: 20px; position: relative; overflow: hidden; min-height: 75vh; box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.8); }
 .estrellas { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0, 0, 0, 0)), radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0, 0, 0, 0)); background-size: 200px 200px; opacity: 0.3; pointer-events: none; }
 

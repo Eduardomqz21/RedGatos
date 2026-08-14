@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     mascotaActual: null,
     qrPerfilActual: '',
     usuarioAdminEditandoId: null,
+    qrImpresionActual: '' // <--- VARIABLE PARA QR INDEPENDIENTE
   };
 
   const perfilInicial = new URLSearchParams(window.location.search).get('perfil');
@@ -50,6 +51,286 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       boton.disabled = false;
       boton.textContent = boton.dataset.textoOriginal || texto;
+    }
+  };
+
+  /* =================================================================================
+     SISTEMA PROFESIONAL DE PLANTILLAS INTERCAMBIABLES Y SELECTORES
+  ================================================================================= */
+  const CONFIG_PLANTILLAS = {
+    credencial: 'especial-miembro',
+    cartel: 'clasico'
+  };
+
+  // LÓGICA DE CAPTURA DE MAPA ESTÁTICO (Espera la carga de Tiles y captura un Canvas)
+  const capturarMapaEstatico = async (lat, lng) => {
+      return new Promise((resolve) => {
+          const mapDiv = document.getElementById('mapa-oculto-captura');
+          if (!mapDiv) return resolve(null);
+          mapDiv.innerHTML = ''; 
+          
+          const map = L.map(mapDiv, { 
+              zoomControl: false, attributionControl: false, fadeAnimation: false, zoomAnimation: false
+          }).setView([lat, lng], 15);
+          
+          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { 
+              maxZoom: 19, crossOrigin: true 
+          }).addTo(map);
+
+          // SOLO DIBUJAMOS EL CÍRCULO DE LA ZONA (Eliminado el marcador central para evitar confusión)
+          L.circle([lat, lng], { radius: 350, color: '#c94c4c', fillColor: '#c94c4c', fillOpacity: 0.25, weight: 4 }).addTo(map);
+
+          // Damos 1.2 segundos para asegurar renderizado de tiles de red antes del snapshot
+          setTimeout(async () => {
+              try {
+                  const canvas = await html2canvas(mapDiv, { useCORS: true, allowTaint: false, scale: 2, logging: false });
+                  map.remove();
+                  resolve(canvas.toDataURL('image/jpeg', 0.85));
+              } catch (e) {
+                  console.error('Error capturando mapa:', e);
+                  map.remove();
+                  resolve(null);
+              }
+          }, 1200); 
+      });
+  };
+
+  document.getElementById('btnConfirmarImpresionQR')?.addEventListener('click', () => {
+      if (!estado.qrImpresionActual) return;
+      const size = document.getElementById('selectTamanoQR').value;
+      const zona = document.getElementById('zona-impresion');
+      if (!zona) return;
+      
+      zona.innerHTML = `
+          <style>
+              @media print {
+                  @page { size: auto; margin: 15mm; }
+                  body > :not(#zona-impresion) { display: none !important; }
+                  #zona-impresion { display: flex !important; justify-content: center; align-items: flex-start; height: 100vh; padding-top: 20mm; width: 100%; margin: 0; padding: 0; }
+              }
+              .qr-print-container { text-align: center; font-family: system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; margin-top: 20px;}
+              .qr-print-img { width: ${size}; height: ${size}; image-rendering: pixelated; object-fit: contain; }
+              .qr-print-text { font-size: 16pt; font-weight: 900; color: #2e4a45; margin-top: 4mm; letter-spacing: 1px; }
+          </style>
+          <div class="qr-print-container">
+              <img src="${estado.qrImpresionActual}" class="qr-print-img" />
+              <div class="qr-print-text">PETMAP</div>
+          </div>
+      `;
+      bootstrap.Modal.getInstance(document.getElementById('modalImprimirQR'))?.hide();
+      setTimeout(() => window.print(), 350);
+  });
+
+  const listarPlantillas = (tipo) => {
+    return tipo === 'credencial' 
+      ? [
+          { id: 'especial-miembro', nombre: 'Premium (2 Caras)', descripcion: 'Diseño oficial PetMap con QR trasero.', icon: '🏆' },
+          { id: 'clasica', nombre: 'Clásica (1 Cara)', descripcion: 'Tarjeta de identificación sencilla.', icon: '💳' }
+        ]
+      : [
+          { id: 'clasico', nombre: 'Cartel de Búsqueda Clásico', descripcion: 'Diseño vertical con mapa estático integrado.', icon: '🚨' }
+        ];
+  };
+
+  const abrirSelectorPlantilla = (tipo, mascota) => {
+      const plantillas = listarPlantillas(tipo);
+      const contenedor = document.getElementById(tipo === 'credencial' ? 'contenedorPlantillasCredencial' : 'contenedorPlantillasCartel');
+      contenedor.innerHTML = '';
+
+      plantillas.forEach(p => {
+          const div = document.createElement('div');
+          div.className = 'col-12';
+          div.innerHTML = `
+            <div class="card border border-2 rounded-3 h-100 p-3 card-plantilla-hover" data-id="${p.id}" style="cursor: pointer; transition: all 0.2s;">
+              <div class="d-flex align-items-center">
+                <div class="fs-1 me-3">${p.icon}</div>
+                <div>
+                  <h6 class="fw-bold mb-1">${p.nombre}</h6>
+                  <p class="small text-muted mb-0">${p.descripcion}</p>
+                </div>
+              </div>
+            </div>
+          `;
+          
+          div.querySelector('.card').onclick = () => {
+              const modalId = tipo === 'credencial' ? 'modalSeleccionarCredencial' : 'modalSeleccionarCartel';
+              bootstrap.Modal.getInstance(document.getElementById(modalId))?.hide();
+              
+              if (tipo === 'credencial') ejecutarImpresionCredencial(p.id, mascota);
+              else ejecutarImpresionCartel(p.id, mascota);
+          };
+          contenedor.appendChild(div);
+      });
+
+      const modalId = tipo === 'credencial' ? 'modalSeleccionarCredencial' : 'modalSeleccionarCartel';
+      new bootstrap.Modal(document.getElementById(modalId)).show();
+  };
+
+  const ejecutarImpresionCredencial = (idPlantilla, m) => {
+      const curm = generarCURM(m.nombre, m.especie, m.fecha_nacimiento);
+      const fechaLimpia = m.fecha_nacimiento ? m.fecha_nacimiento.split('T')[0] : 'Desconocida';
+      const nombreDueno = estado.usuario ? estado.usuario.nombre : 'Dueño';
+
+      const datosVariables = {
+          ...m,
+          curm: curm,
+          fecha_nacimiento: fechaLimpia,
+          nombre_dueno: nombreDueno,
+          telefono: m.telefono_dueno || 'Sin registrar',
+          foto: m.foto_url || 'https://via.placeholder.com/150?text=Foto',
+          qr_perfil: m.qr_perfil || '',
+          raza: m.raza || 'Mestizo',
+          estado_texto: m.esta_perdida ? 'PERDIDA' : 'A SALVO',
+          estado_color: m.esta_perdida ? '#c94c4c' : '#2a7d4f'
+      };
+      imprimirPlantilla('credencial', idPlantilla, datosVariables);
+  };
+
+  const ejecutarImpresionCartel = async (idPlantilla, m) => {
+      const btn = document.getElementById('btnGenerarCartelBusqueda');
+      alternarBotonCarga(btn, true, 'Generando Mapa...');
+      
+      let mapaBase64 = null;
+      let mapaFallo = false;
+      
+      if (m.latitud && m.longitud) {
+          mapaBase64 = await capturarMapaEstatico(m.latitud, m.longitud);
+          if (!mapaBase64) mapaFallo = true;
+      }
+
+      const datosCartel = {
+          ...m,
+          foto: m.foto_url || '',
+          telefono: m.telefono_dueno || 'Sin registrar',
+          raza: m.raza || 'Mestizo',
+          descripcion: m.descripcion || 'Sin descripción',
+          qr: m.qr_perfil || '',
+          no_perdida: !m.esta_perdida,
+          fecha_extravio: new Date().toLocaleDateString('es-ES'),
+          mapa_extravio: mapaBase64,
+          mapa_fallo: mapaFallo
+      };
+      alternarBotonCarga(btn, false, 'Generar Cartel de Búsqueda');
+      imprimirPlantilla('cartel', idPlantilla, datosCartel);
+  };
+
+  const procesarPlantilla = (html, datos) => {
+      // 1. Procesar condicionales (ej. {{#if esta_perdida}}...{{/if}})
+      let procesado = html.replace(/{{#if\s+([a-zA-Z0-9_]+)}}(.*?){{\/if}}/gs, (match, prop, content) => {
+          return datos[prop] ? content : '';
+      });
+
+      // 2. Reemplazar variables seguras
+      procesado = procesado.replace(/{{([a-zA-Z0-9_]+)}}/g, (match, prop) => {
+          let valor = datos[prop];
+          if (valor === undefined || valor === null) return '';
+          
+          // Tratamiento especializado para rutas de imágenes (Evita XSS sin corromper la URL/Base64)
+          if (['qr', 'qr_perfil', 'foto', 'foto_url', 'mapa_extravio'].includes(prop)) {
+             return String(valor).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+          }
+
+          // Texto general estricto contra HTML
+          return escaparHtml(String(valor));
+      });
+      return procesado;
+  };
+
+  const cargarArchivosPlantilla = async (tipo, id) => {
+     try {
+         const ruta = `/templates/${tipo === 'credencial' ? 'credenciales' : 'carteles'}/${id}`;
+         const [htmlRes, cssRes, metaRes] = await Promise.all([
+             fetch(`${ruta}/template.html`),
+             fetch(`${ruta}/template.css`),
+             fetch(`${ruta}/metadata.json`).catch(() => ({ ok: false }))
+         ]);
+         
+         if (!htmlRes.ok || !cssRes.ok) {
+             throw new Error(`Archivos no encontrados en: ${ruta}. Verifica que la ruta exista en el servidor.`);
+         }
+         
+         const html = await htmlRes.text();
+         const css = await cssRes.text();
+         const metadata = metaRes.ok ? await metaRes.json() : {};
+         return { html, css, metadata, id, tipo };
+     } catch (e) {
+         console.warn(`No se pudo cargar la plantilla "${id}":`, e);
+         Swal.fire('Error de Plantilla', `Ruta fallida: ${e.message}`, 'error');
+         return null;
+     }
+  };
+
+  const cargarPlantilla = async (tipo, id) => {
+      let plantilla = await cargarArchivosPlantilla(tipo, id);
+      if (!plantilla) { // Fallback de seguridad
+          const fallbackId = CONFIG_PLANTILLAS[tipo];
+          if (id !== fallbackId) {
+              console.log(`Fallback activado: Cargando plantilla predeterminada -> ${fallbackId}`);
+              plantilla = await cargarArchivosPlantilla(tipo, fallbackId);
+          }
+      }
+      return plantilla;
+  };
+
+  const renderizarPlantilla = async (opciones) => {
+      const { tipo, plantilla: idPlantilla, datos } = opciones;
+      const plantilla = await cargarPlantilla(tipo, idPlantilla);
+      
+      if (!plantilla) throw new Error(`No se pudo cargar la estructura base para la plantilla: ${idPlantilla}`);
+
+      const htmlFinal = procesarPlantilla(plantilla.html, datos);
+      const styleId = `style-plantilla-${tipo}-${plantilla.id}`;
+      
+      // Aisla y previene conflictos de @page eliminando estilos de otras plantillas previas
+      document.querySelectorAll('style[id^="style-plantilla-"]').forEach(s => {
+          if (s.id !== styleId) s.remove();
+      });
+
+      if (!document.getElementById(styleId)) {
+          const style = document.createElement('style');
+          style.id = styleId;
+          style.innerHTML = plantilla.css;
+          document.head.appendChild(style);
+      }
+
+      // El contenedor wrapper aisla completamente el diseño
+      return `<div class="plantilla-wrapper plantilla-${tipo}-${plantilla.id}">${htmlFinal}</div>`;
+  };
+
+  const imprimirPlantilla = async (tipo, idPlantilla, datos) => {
+    const zona = document.getElementById('zona-impresion');
+    if (!zona) return;
+    
+    try {
+        const html = await renderizarPlantilla({ tipo, plantilla: idPlantilla, datos });
+        if (!html) throw new Error("El motor de renderizado devolvió un resultado vacío.");
+        
+        zona.innerHTML = html;
+        
+        const imagenes = Array.from(zona.getElementsByTagName('img'));
+        if (imagenes.length === 0) {
+            setTimeout(() => window.print(), 100);
+            return;
+        }
+
+        let cargadas = 0;
+        const intentar = () => { 
+            if (++cargadas === imagenes.length) {
+                // Darle tiempo al navegador para renderizar las imagenes en la vista de impresión
+                setTimeout(() => window.print(), 350); 
+            }
+        };
+        imagenes.forEach(img => { 
+            if (img.complete) {
+                intentar(); 
+            } else { 
+                img.onload = intentar; 
+                img.onerror = intentar; 
+            } 
+        });
+    } catch (error) {
+        console.error("Error Crítico del motor de plantillas:", error);
+        Swal.fire('Fallo de Renderizado', error.message, 'error');
     }
   };
 
@@ -161,7 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   const adjuntarEventosFormularioAuth = () => {
-    // Registro
     const regPass = document.getElementById('registroContrasena');
     const regConf = document.getElementById('registroConfirmar');
     if (regPass) {
@@ -175,7 +455,6 @@ document.addEventListener('DOMContentLoaded', () => {
       regConf.addEventListener('input', () => validarConfirmacionPassword(regPass, regConf, 'msgConfirmacion'));
     }
 
-    // Reset
     const resetPass = document.getElementById('resetContrasena');
     const resetConf = document.getElementById('resetConfirmar');
     if (resetPass) {
@@ -189,7 +468,6 @@ document.addEventListener('DOMContentLoaded', () => {
       resetConf.addEventListener('input', () => validarConfirmacionPassword(resetPass, resetConf, 'msgConfirmacionReset'));
     }
     
-    // Configurar ojitos
     configurarTogglesPass();
   };
   
@@ -205,18 +483,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${String(especie || 'X').charAt(0).toUpperCase()}-${String(nombre || 'XX').substring(0, 2).toUpperCase()}-${ddmmyy}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
   };
 
-  const imprimirPlantilla = (html) => {
-    const zona = document.getElementById('zona-impresion');
-    if (!zona) return;
-    zona.innerHTML = html;
-    
-    const imagenes = Array.from(zona.getElementsByTagName('img'));
-    if (imagenes.length === 0) return window.print();
-
-    let cargadas = 0;
-    const intentar = () => { if (++cargadas === imagenes.length) setTimeout(() => window.print(), 100); };
-    imagenes.forEach(img => { if (img.complete) intentar(); else { img.onload = intentar; img.onerror = intentar; } });
-  };
   window.addEventListener('afterprint', () => { document.getElementById('zona-impresion').innerHTML = ''; });
 
   const descargarUrl = (url, nombre) => {
@@ -224,31 +490,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const a = document.createElement('a');
     a.href = url; a.download = nombre; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
-  };
-
-  const imprimirCredencialMascota = (m) => {
-    const curm = generarCURM(m.nombre, m.especie, m.fecha_nacimiento);
-    const fechaLimpia = m.fecha_nacimiento ? m.fecha_nacimiento.split('T')[0] : 'Desconocida';
-    const nombreDueno = estado.usuario ? estado.usuario.nombre : 'Dueño';
-
-    imprimirPlantilla(`
-      <div class="credencial-wrapper">
-        <div class="credencial-bg-huellas"></div>
-        <div class="credencial-contenido">
-          <img src="${m.foto_url ? escaparHtml(m.foto_url) : 'https://via.placeholder.com/150?text=Foto'}" class="credencial-foto" alt="Foto">
-          <div class="credencial-datos">
-            <div class="credencial-titulo">${escaparHtml(m.nombre)}</div>
-            <div class="credencial-item"><strong>ESPECIE:</strong> ${escaparHtml(m.especie)}</div>
-            <div class="credencial-item"><strong>RAZA:</strong> ${escaparHtml(m.raza || 'Mestizo')}</div>
-            <div class="credencial-item"><strong>NACIMIENTO:</strong> ${escaparHtml(fechaLimpia)}</div>
-            <div class="credencial-item"><strong>CURM:</strong> ${curm}</div>
-            <div class="credencial-item"><strong>DUEÑO:</strong> ${escaparHtml(nombreDueno)}</div>
-            <div class="credencial-item"><strong>TEL:</strong> ${escaparHtml(m.telefono_dueno || 'Sin registrar')}</div>
-            <div class="credencial-barcode">*${curm}*</div>
-          </div>
-        </div>
-      </div>
-    `);
   };
 
   const verificarSesion = async () => {
@@ -287,7 +528,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Función Fetch especializada para AUTH, no levanta SweetAlerts automáticos.
   const authFetch = async (url, body, btn, cargandoTexto) => {
     alternarBotonCarga(btn, true, cargandoTexto);
     try {
@@ -327,7 +567,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    // Limpiezas preventivas al cambiar de vista
     ocultarAlertaGlobalFormulario('loginAlerta');
     ocultarAlertaGlobalFormulario('registroAlerta');
     ocultarAlertaGlobalFormulario('recuperarAlerta');
@@ -356,12 +595,10 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('popstate', (e) => {
     let ruta = e.state?.vista || window.location.pathname.replace(/^\/+/, '');
     if (ruta === 'index.html' || ruta === '') ruta = 'inicio';
-    // No perder token si está en url
     if(tokenResetUrl && ruta === 'inicio') ruta = 'reset-password';
     mostrarVista(ruta, false);
   });
 
-  // Delegación de eventos global
   document.addEventListener('click', (e) => {
     if (e.target.classList.contains('btn-borrar-mascota')) {
       window.borrarMascotaAdmin(e.target.dataset.id);
@@ -394,7 +631,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   /* =================================================================================
-     MEMORIAL Y MASCOTAS (Lógica Mantenida Exactamente Igual)
+     MEMORIAL Y MASCOTAS
   ================================================================================= */
   const encenderVeladora = async (id, btn) => {
     if (btn.disabled) return;
@@ -495,7 +732,6 @@ document.addEventListener('DOMContentLoaded', () => {
     DOM.contenedorMisMascotas.appendChild(frag);
   });
 
-  // Bloques de Admin (se omiten refactorizaciones innecesarias para mantener funcionalidad original intacta)
   const cargarMascotasAdmin = async () => {
     try {
       const resp = await fetch('/api/mascotas/admin/todas', { credentials: 'include' });
@@ -607,10 +843,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  /* =================================================================================
-     EVENTOS DE AUTENTICACIÓN (LOGIN, REGISTRO, RECOVERY) MEJORADOS Y SIN SWAL
-  ================================================================================= */
-  
   DOM.formLogin?.addEventListener('submit', async (e) => {
     e.preventDefault();
     ocultarAlertaGlobalFormulario('loginAlerta');
@@ -638,7 +870,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!response.ok) {
       if (response.status === 401) {
         mostrarAlertaGlobalFormulario('loginAlerta', 'El correo o la contraseña no son correctos.');
-        // No borramos los inputs, permitimos que el usuario reintente rápidamente.
         marcarInput(correo, false, null);
         marcarInput(contrasena, false, null);
       } else if (response.status === 429) {
@@ -649,7 +880,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Login Exitoso
     estado.usuario = response.data.usuario; 
     verificarSesion(); 
     DOM.formLogin.reset();
@@ -689,7 +919,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const confValida = validarConfirmacionPassword(form.contrasena, form.confirmar, 'msgConfirmacion');
     if (!confValida) {
-      marcarInput(form.confirmar, false, null); // el div ya se encarga del msg
+      marcarInput(form.confirmar, false, null);
       tieneError = true;
     }
 
@@ -712,7 +942,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // Registro exitoso, ocultamos formulario y mostramos vista de éxito inline
     document.getElementById('vistaFormularioRegistro').classList.add('d-none');
     document.getElementById('vistaExitoRegistro').classList.remove('d-none');
     DOM.formRegistro.reset();
@@ -740,7 +969,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    mostrarAlertaGlobalFormulario('recuperarAlerta', 'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña. (Revisa la consola del backend para pruebas)', 'exito');
+    mostrarAlertaGlobalFormulario('recuperarAlerta', 'Si el correo está registrado, recibirás un enlace para restablecer tu contraseña.', 'exito');
     DOM.formRecuperar.reset();
   });
 
@@ -786,14 +1015,9 @@ document.addEventListener('DOMContentLoaded', () => {
     limpiarValidaciones(DOM.formReset);
     mostrarVista('login');
     mostrarAlertaGlobalFormulario('loginAlerta', 'Tu contraseña se actualizó correctamente. Ahora puedes iniciar sesión.', 'exito');
-    
-    // Limpiamos token URL para no atrapar al usuario
     window.history.pushState({}, document.title, "/");
   });
 
-  /* =================================================================================
-     EVENTOS DE CREACIÓN DE MASCOTAS
-  ================================================================================= */
   DOM.formMascota?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('btnSubmitMascota');
@@ -828,7 +1052,6 @@ document.addEventListener('DOMContentLoaded', () => {
     alternarBotonCarga(btn, false);
   });
 
-  /* UI COMPARTIDA DE MASCOTAS */
   window.petmapUI = {
     establecerCoordenadas: (lat, lng) => {
       if (document.getElementById('latitud')) document.getElementById('latitud').value = lat;
@@ -857,27 +1080,21 @@ document.addEventListener('DOMContentLoaded', () => {
       btnEstado.className = m.esta_perdida ? 'btn btn-success fw-bold px-4 py-3 rounded-pill' : 'btn btn-warning fw-bold px-4 py-3 rounded-pill';
       btnEstado.onclick = () => window.petmapUI.prepararEstado(m.id, m.esta_perdida, m.telefono_dueno, m.direccion_dueno);
       
-      document.getElementById('btnImprimirCredencial').onclick = () => imprimirCredencialMascota(m);
+      // 1. CREDENCIAL (Abre modal de selección)
+      document.getElementById('btnImprimirCredencial').onclick = () => {
+          abrirSelectorPlantilla('credencial', m);
+      };
+      
+      // 2. IMPRESIÓN Y GUARDADO DE QR
+      document.getElementById('btnImprimirQRMascotaPrivada').onclick = () => {
+          estado.qrImpresionActual = m.qr_perfil;
+          new bootstrap.Modal(document.getElementById('modalImprimirQR')).show();
+      };
       document.getElementById('btnDescargarQRMascotaPrivada').onclick = () => descargarUrl(m.qr_perfil, 'qr.png');
       
+      // 3. CARTEL DINÁMICO (Abre modal de selección)
       document.getElementById('btnGenerarCartelBusqueda').onclick = () => {
-        imprimirPlantilla(`
-          <div class="cartel-impresion">
-            <div class="cartel-header">¡SE BUSCA!</div>
-            <h1 style="text-align:center;font-size:4rem;margin:10px 0;color:#2e4a45;">${escaparHtml(m.nombre)}</h1>
-            <div style="display:flex;gap:20px;margin-top:20px;">
-              <div style="flex:1;"><img src="${m.foto_url || ''}" style="width:100%;border-radius:10px;border:4px solid #c94c4c;object-fit:cover;" /></div>
-              <div style="flex:1;font-size:1.4rem;line-height:1.6;">
-                <p><strong>Especie/Raza:</strong> ${escaparHtml(m.especie)} ${m.raza ? '- ' + escaparHtml(m.raza) : ''}</p>
-                <p><strong>Señas particulares:</strong> ${escaparHtml(m.descripcion || '')}</p>
-                <div style="background:#fff3f3;padding:15px;border-left:5px solid #c94c4c;margin-top:20px;">
-                  <p style="margin:0;color:#c94c4c;font-weight:bold;font-size:1.2rem;">Por favor, si la ves, comunícate al:</p>
-                  <p style="margin:5px 0 0 0;font-size:2.2rem;font-weight:900;">Tel. ${escaparHtml(m.telefono_dueno)}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        `);
+          abrirSelectorPlantilla('cartel', m);
       };
       
       mostrarVista('perfil-privado');
