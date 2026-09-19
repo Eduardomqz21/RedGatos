@@ -142,4 +142,53 @@ const restablecerContrasena = async (req, res) => {
   }
 };
 
-module.exports = { registrarUsuario, iniciarSesion, obtenerSesionActual, cerrarSesion, solicitarRecuperacion, restablecerContrasena };
+const actualizarMiPerfil = async (req, res) => {
+  try {
+    if (!req.usuario) return res.status(401).json({ mensaje: 'No hay sesión activa.' });
+    const { nombre, correo, contrasena } = req.body;
+
+    if (!nombre || typeof nombre !== 'string' || nombre.length > 100) {
+      return res.status(400).json({ mensaje: 'Nombre obligatorio (máx 100 caracteres).' });
+    }
+    if (!correo || typeof correo !== 'string' || correo.length > 255 || !esCorreoValido(correo)) {
+      return res.status(400).json({ mensaje: 'Correo obligatorio y válido.' });
+    }
+
+    let consulta, valores;
+    if (contrasena && contrasena.trim() !== '') {
+      if (!expContrasena.test(contrasena)) {
+        return res.status(400).json({ mensaje: 'Contraseña inválida. Revisa los requisitos de seguridad.' });
+      }
+      const contrasenaCifrada = await bcrypt.hash(contrasena, 10);
+      consulta = `UPDATE usuarios SET nombre = $1, correo = $2, contrasena_hash = $3 WHERE id = $4 RETURNING id, nombre, correo, rol;`;
+      valores = [nombre.trim(), correo.trim(), contrasenaCifrada, req.usuario.id];
+    } else {
+      consulta = `UPDATE usuarios SET nombre = $1, correo = $2 WHERE id = $3 RETURNING id, nombre, correo, rol;`;
+      valores = [nombre.trim(), correo.trim(), req.usuario.id];
+    }
+
+    const resultado = await consultarBd(consulta, valores);
+    const usuarioActualizado = resultado.rows[0];
+
+    const token = jwt.sign(
+      { id: usuarioActualizado.id, rol: usuarioActualizado.rol, correo: usuarioActualizado.correo, nombre: usuarioActualizado.nombre },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    res.cookie('petmap_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Lax', 
+      path: '/',
+      maxAge: 8 * 60 * 60 * 1000 // 8 horas
+    });
+
+    res.status(200).json({ mensaje: 'Perfil actualizado.', usuario: usuarioActualizado });
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ mensaje: 'El correo ya está asociado a otra cuenta.' });
+    res.status(500).json({ mensaje: 'Error al actualizar perfil.' });
+  }
+};
+
+module.exports = { registrarUsuario, iniciarSesion, obtenerSesionActual, cerrarSesion, solicitarRecuperacion, restablecerContrasena, actualizarMiPerfil };

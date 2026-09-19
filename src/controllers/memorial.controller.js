@@ -74,4 +74,26 @@ const borrarMemorial = async (req, res) => {
   }
 };
 
-module.exports = { registrarMemorial, obtenerMemoriales, encenderVeladora, borrarMemorial };
+const actualizarMemorialAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, especie, mensaje, fecha_fallecimiento } = req.body;
+    
+    const result = await consultarBd(
+      `UPDATE mascotas_memorial SET 
+        nombre = COALESCE($1, nombre), 
+        especie = COALESCE($2, especie), 
+        mensaje = COALESCE($3, mensaje), 
+        fecha_fallecimiento = COALESCE($4, fecha_fallecimiento) 
+       WHERE id = $5 RETURNING *;`,
+      [nombre ? nombre.trim() : null, especie ? especie.trim() : null, mensaje ? mensaje.trim() : null, fecha_fallecimiento || null, id]
+    );
+
+    if (!result.rowCount) return res.status(404).json({ mensaje: 'Homenaje no encontrado.' });
+    res.status(200).json({ mensaje: 'Homenaje actualizado correctamente.', memorial: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ mensaje: 'Error al actualizar el homenaje.' });
+  }
+};
+
+module.exports = { registrarMemorial, obtenerMemoriales, encenderVeladora, borrarMemorial, actualizarMemorialAdmin };

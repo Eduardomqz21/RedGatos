@@ -57,7 +57,12 @@ const actualizarUsuario = async (req, res) => {
 
     if (nombre) { campos.push(`nombre = $${valores.length + 1}`); valores.push(nombre.trim()); }
     if (correo) { campos.push(`correo = $${valores.length + 1}`); valores.push(correo.trim()); }
-    if (contrasena && expContrasena.test(contrasena)) { campos.push(`contrasena_hash = $${valores.length + 1}`); valores.push(await bcrypt.hash(contrasena, 10)); }
+    
+    if (contrasena && contrasena.trim() !== '') {
+      if (!expContrasena.test(contrasena)) return res.status(400).json({ mensaje: 'Contraseña inválida. Debe incluir mayúsculas, minúsculas, números y símbolos (mínimo 8 caracteres).' });
+      campos.push(`contrasena_hash = $${valores.length + 1}`); 
+      valores.push(await bcrypt.hash(contrasena, 10)); 
+    }
     if (rol) {
       const rolNorm = normalizarRol(rol);
       if (rolNorm === 'superadmin' && req.usuario.rol !== 'superadmin') return res.status(403).json({ mensaje: 'No autorizado para otorgar superadmin.' });

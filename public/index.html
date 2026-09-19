@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
   <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
   <link href="estilos.css?v=3" rel="stylesheet" />
   <style>
     /* Estilos extra para la selección de plantillas */
@@ -62,6 +64,7 @@
               <span id="textoNombreUsuario">Mi Cuenta</span>
             </button>
             <ul class="dropdown-menu dropdown-menu-end shadow-sm mt-2 border-0 tarjeta-suave">
+              <li><button type="button" class="dropdown-item py-2 fw-semibold" data-vista="mi-perfil">Mi Perfil</button></li>
               <li><button type="button" class="dropdown-item py-2 fw-semibold" data-vista="mis-mascotas">Mis Mascotas</button></li>
               <li><button type="button" class="dropdown-item py-2 fw-semibold d-none text-primary" id="itemMenuAdmin" data-vista="admin">Panel Admin</button></li>
               <li><hr class="dropdown-divider"></li>
@@ -202,7 +205,7 @@
                 <div class="position-relative mt-2">
                   <input type="password" id="loginContrasena" class="form-control pe-5" name="contrasena" placeholder="••••••••" required />
                   <button type="button" class="btn-toggle-password toggle-login-pass" aria-label="Mostrar contraseña">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                   </button>
                 </div>
                 <div class="invalid-feedback">Ingresa tu contraseña.</div>
@@ -250,7 +253,7 @@
                   <div class="position-relative">
                     <input type="password" id="registroContrasena" class="form-control pe-5" name="contrasena" placeholder="Crea una contraseña" required />
                     <button type="button" class="btn-toggle-password toggle-reg-pass" aria-label="Mostrar contraseña">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </button>
                   </div>
                   <!-- Contenedor dinámico de reglas -->
@@ -268,7 +271,7 @@
                   <div class="position-relative">
                     <input type="password" id="registroConfirmar" class="form-control pe-5" name="confirmar" placeholder="Repite tu contraseña" required disabled />
                     <button type="button" class="btn-toggle-password toggle-reg-conf" aria-label="Mostrar contraseña">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </button>
                   </div>
                   <div id="msgConfirmacion" class="invalid-feedback d-block mt-1"></div>
@@ -350,7 +353,7 @@
                 <div class="position-relative">
                   <input type="password" id="resetContrasena" class="form-control pe-5" name="contrasena" placeholder="Crea una contraseña" required />
                   <button type="button" class="btn-toggle-password toggle-reset-pass" aria-label="Mostrar contraseña">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                   </button>
                 </div>
                 <!-- Contenedor dinámico de reglas (reutilizado) -->
@@ -368,7 +371,7 @@
                 <div class="position-relative">
                   <input type="password" id="resetConfirmar" class="form-control pe-5" name="confirmar" placeholder="Repite tu contraseña" required disabled />
                   <button type="button" class="btn-toggle-password toggle-reset-conf" aria-label="Mostrar contraseña">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                   </button>
                 </div>
                 <div id="msgConfirmacionReset" class="invalid-feedback d-block mt-1"></div>
@@ -382,116 +385,245 @@
     </section>
 
     <!-- LAS DEMÁS VISTAS SE MANTIENEN IGUAL (MIS MASCOTAS, ADMIN, ETC) -->
-    <!-- VISTA MIS MASCOTAS -->
-    <section id="vista-mis-mascotas" class="estado-vista">
-      <h2 class="h3 fw-bold mb-4">Mis Mascotas</h2>
-      <p class="text-muted">Selecciona una de tus mascotas para ver su perfil o generar su credencial de identificación.</p>
-      <div id="contenedorMisMascotas" class="row g-4" aria-live="polite"></div>
-    </section>
-
-    <!-- VISTA ADMIN -->
-    <section id="vista-admin" class="estado-vista">
-      <h2 class="h3 fw-bold mb-4 text-danger">Centro de Comando (Admin)</h2>
-      
-      <div class="row g-4 mb-4">
-        <!-- Columna Formulario Admin -->
-        <div class="col-12 col-xl-4">
-          <div class="tarjeta-suave p-4 h-100">
-            <div class="d-flex align-items-center justify-content-between mb-3">
-              <h3 id="tituloFormularioAdminUsuario" class="h5 fw-bold mb-0">Crear usuario</h3>
-              <button type="button" id="btnCancelarEdicionUsuario" class="btn btn-sm btn-link text-decoration-none d-none">Cancelar</button>
-            </div>
-            <form id="formularioAdminUsuario" class="d-grid gap-3">
-              <div>
-                <label for="adminNombre" class="form-label">Nombre</label>
-                <input type="text" id="adminNombre" class="form-control" name="nombre" required />
+    
+    <!-- VISTA MI PERFIL -->
+    <section id="vista-mi-perfil" class="estado-vista">
+      <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+          <div class="tarjeta-suave p-4 p-md-5">
+            <h2 class="h3 fw-bold mb-4 text-center">Mi Perfil</h2>
+            <form id="formMiPerfil">
+              <div class="mb-3">
+                <label class="form-label fw-bold">Nombre Completo</label>
+                <input type="text" name="nombre" id="perfilNombre" class="form-control" required minlength="2">
               </div>
-              <div>
-                <label for="adminCorreo" class="form-label">Correo electrónico</label>
-                <input type="email" id="adminCorreo" class="form-control" name="correo" required />
+              <div class="mb-3">
+                <label class="form-label fw-bold">Correo Electrónico</label>
+                <input type="email" name="correo" id="perfilCorreo" class="form-control" required>
               </div>
-              <div>
-                <label for="adminContrasena" class="form-label">Contraseña</label>
-                <input type="password" id="adminContrasena" class="form-control" name="contrasena" placeholder="Obligatoria al crear, opcional al editar" />
+              <div class="mb-4">
+                <label class="form-label fw-bold">Nueva Contraseña <small class="text-muted fw-normal">(Opcional, dejar en blanco para no cambiar)</small></label>
+                <input type="password" name="contrasena" id="perfilContrasena" class="form-control" minlength="6">
               </div>
-              <div>
-                <label for="adminRol" class="form-label">Rol</label>
-                <select id="adminRol" class="form-select" name="rol">
-                  <option value="admin" selected>Admin</option>
-                  <option value="superadmin">Superadmin</option>
-                </select>
-              </div>
-              <button type="submit" id="botonGuardarUsuarioAdmin" class="btn boton-acento py-3 mt-2">Crear usuario</button>
+              <button type="submit" id="btnGuardarPerfil" class="btn boton-acento w-100 fw-bold py-2">
+                Guardar Cambios
+              </button>
             </form>
           </div>
         </div>
+      </div>
+    </section>
 
-        <!-- Columna Tabla Usuarios -->
-        <div class="col-12 col-xl-8">
-          <div class="tarjeta-suave p-0 overflow-hidden h-100 d-flex flex-column">
-            <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center">
-              <h4 class="h6 mb-0 fw-bold">Gestión de Usuarios</h4>
-              <input type="search" id="filtroAdminUsuarios" class="form-control form-control-sm w-auto" placeholder="Buscar usuario..." />
+    <!-- VISTA MIS MASCOTAS -->
+    <section id="vista-mis-mascotas" class="estado-vista">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+          <h2 class="h3 fw-bold mb-1 text-dark d-flex align-items-center">
+            <script>document.write(window.PETMAP_ICONOS ? window.PETMAP_ICONOS.mascota(28, 'currentColor', 'me-2') : '')</script> 
+            Mis Mascotas
+          </h2>
+          <p class="text-muted small mb-0">Gestiona los perfiles, cambia estados de búsqueda y genera credenciales ID.</p>
+        </div>
+        <div>
+          <button class="btn boton-acento px-4 rounded-pill fw-bold shadow-sm d-flex align-items-center" onclick="mostrarVista('registro-mascota')">
+            <script>document.write(window.PETMAP_ICONOS ? window.PETMAP_ICONOS.agregar(20, 'currentColor', 'me-1') : '')</script> Registrar Mascota
+          </button>
+        </div>
+      </div>
+      <div id="contenedorMisMascotas" class="row g-4" aria-live="polite"></div>
+    </section>
+
+    <!-- VISTA ADMIN (PANEL DE CONTROL CENTRAL) -->
+    <section id="vista-admin" class="estado-vista">
+      <!-- HEADER CON ACCIONES -->
+      <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between mb-4 gap-3">
+        <div>
+          <div class="mini-etiqueta mb-2 text-danger border-danger-subtle d-inline-flex align-items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/></svg> Modo Administrador
+          </div>
+          <h2 class="h3 fw-bold mb-1 text-dark">Centro de Comando Global</h2>
+          <p class="text-muted small mb-0">Control total sobre usuarios, mascotas reportadas, alertas y homenajes del sistema.</p>
+        </div>
+        <div>
+          <button type="button" id="btnRefrescarAdmin" class="btn btn-outline-dark btn-sm rounded-pill px-3 fw-bold d-inline-flex align-items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg> Actualizar Métricas
+          </button>
+        </div>
+      </div>
+      
+      <!-- TARJETAS DE MÉTRICAS (KPIs) -->
+      <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="tarjeta-suave p-3 d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path fill-rule="evenodd" d="M5.216 14A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216z"/><path d="M4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg>
             </div>
-            <div class="table-responsive flex-grow-1">
+            <div>
+              <div class="text-muted small fw-semibold">Usuarios Totales</div>
+              <div class="h4 fw-bold mb-0" id="kpiTotalUsuarios">0</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="tarjeta-suave p-3 d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-danger bg-opacity-10 p-3 text-danger d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/></svg>
+            </div>
+            <div>
+              <div class="text-muted small fw-semibold">Mascotas Registradas</div>
+              <div class="h4 fw-bold mb-0" id="kpiTotalMascotas">0</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="tarjeta-suave p-3 d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-warning bg-opacity-10 p-3 text-warning d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l.451-.081.97-.268zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>
+            </div>
+            <div>
+              <div class="text-muted small fw-semibold">Homenajes (Memorial)</div>
+              <div class="h4 fw-bold mb-0" id="kpiTotalMemorial">0</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+          <div class="tarjeta-suave p-3 d-flex align-items-center gap-3">
+            <div class="rounded-circle bg-success bg-opacity-10 p-3 text-success d-flex align-items-center justify-content-center" style="width: 52px; height: 52px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M1.5 0A1.5 1.5 0 0 0 0 1.5v2A1.5 1.5 0 0 0 1.5 5h13A1.5 1.5 0 0 0 16 3.5v-2A1.5 1.5 0 0 0 14.5 0h-13zM1 1.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-2zm1.5 10a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-2zM0 7.5A1.5 1.5 0 0 1 1.5 6h13A1.5 1.5 0 0 1 16 7.5v2A1.5 1.5 0 0 1 14.5 11h-13A1.5 1.5 0 0 1 0 9.5v-2zM1.5 7a.5.5 0 0 0-.5.5v2a.5.5 0 0 0 .5.5h13a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 0-.5-.5h-13z"/></svg>
+            </div>
+            <div>
+              <div class="text-muted small fw-semibold">Estado Servidor</div>
+              <div class="h6 fw-bold mb-0 text-success d-flex align-items-center"><span class="badge bg-success rounded-circle p-1 me-1" style="width:8px;height:8px;"></span> Activo & BD Ok</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PESTAÑAS SUB-ADMIN -->
+      <ul class="nav nav-pills mb-4 border p-1 rounded-pill bg-white shadow-sm gap-1" id="pestañasAdmin" role="tablist">
+        <li class="nav-item flex-fill" role="presentation">
+          <button class="nav-link w-100 rounded-pill fw-bold active d-flex align-items-center justify-content-center gap-1" id="tab-usuarios" data-bs-toggle="tab" data-bs-target="#admin-tab-usuarios" type="button" role="tab"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1h8zm-7.978-1A4.772 4.772 0 0 1 7 13c0-1.358.68-2.751 1.926-3.72C7.962 9.088 6.577 9 5 9c-4 0-5 3-5 4s1 1 1 1h6.022zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg> Usuarios (<span id="badgeCountUsuarios">0</span>)</button>
+        </li>
+        <li class="nav-item flex-fill" role="presentation">
+          <button class="nav-link w-100 rounded-pill fw-bold d-flex align-items-center justify-content-center gap-1" id="tab-mascotas" data-bs-toggle="tab" data-bs-target="#admin-tab-mascotas" type="button" role="tab"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/></svg> Mascotas (<span id="badgeCountMascotas">0</span>)</button>
+        </li>
+        <li class="nav-item flex-fill" role="presentation">
+          <button class="nav-link w-100 rounded-pill fw-bold d-flex align-items-center justify-content-center gap-1" id="tab-memorial" data-bs-toggle="tab" data-bs-target="#admin-tab-memorial" type="button" role="tab"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l.451-.081.97-.268zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg> Homenajes (<span id="badgeCountMemorial">0</span>)</button>
+        </li>
+      </ul>
+
+      <!-- CONTENIDO DE PESTAÑAS -->
+      <div class="tab-content" id="contenidoAdminTabs">
+        
+        <!-- PESTAÑA 1: GESTIÓN DE USUARIOS -->
+        <div class="tab-pane fade show active" id="admin-tab-usuarios" role="tabpanel">
+          <div class="row g-4">
+            <!-- Formulario Crear/Editar Usuario Admin -->
+            <div class="col-12 col-xl-4">
+              <div class="tarjeta-suave p-4">
+                <h4 id="tituloFormUsuarioAdmin" class="h6 mb-3 fw-bold">Crear Nuevo Usuario</h4>
+                <form id="formUsuarioAdmin" novalidate>
+                  <input type="hidden" id="adminUserId" />
+                  <div class="mb-3">
+                    <label for="adminUserNombre" class="form-label small fw-bold">Nombre Completo</label>
+                    <input type="text" id="adminUserNombre" class="form-control form-control-sm" required placeholder="Ej. Ana María" />
+                  </div>
+                  <div class="mb-3">
+                    <label for="adminUserCorreo" class="form-label small fw-bold">Correo Electrónico</label>
+                    <input type="email" id="adminUserCorreo" class="form-control form-control-sm" required placeholder="usuario@correo.com" />
+                  </div>
+                  <div class="mb-3">
+                    <label for="adminUserPassword" class="form-label small fw-bold">Contraseña <span id="hintAdminPass" class="text-muted fw-normal">(opcional en edición)</span></label>
+                    <input type="password" id="adminUserPassword" class="form-control form-control-sm" placeholder="••••••••" />
+                  </div>
+                  <div class="mb-4">
+                    <label for="adminUserRol" class="form-label small fw-bold">Rol en el Sistema</label>
+                    <select id="adminUserRol" class="form-select form-select-sm">
+                      <option value="usuario">Usuario Estándar</option>
+                      <option value="admin">Administrador</option>
+                    </select>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button type="submit" id="btnGuardarUsuarioAdmin" class="btn boton-acento btn-sm w-100 fw-bold">Guardar Usuario</button>
+                    <button type="button" id="btnCancelarEdicionUsuarioAdmin" class="btn btn-outline-secondary btn-sm d-none">Cancelar</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Tabla de Usuarios -->
+            <div class="col-12 col-xl-8">
+              <div class="tarjeta-suave p-0 overflow-hidden h-100 d-flex flex-column">
+                <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
+                  <h4 class="h6 mb-0 fw-bold d-inline-flex align-items-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-2" viewBox="0 0 16 16"><path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1H7zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-5.784 6A2.238 2.238 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.325 6.325 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1h4.216zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></svg> Lista de Usuarios</h4>
+                  <input type="search" id="filtroAdminUsuarios" class="form-control form-control-sm w-auto" placeholder="Buscar usuario..." />
+                </div>
+                <div class="table-responsive flex-grow-1">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                      <tr>
+                        <th class="ps-4" scope="col">Usuario</th>
+                        <th scope="col">Correo</th>
+                        <th scope="col">Rol</th>
+                        <th class="text-end pe-4" scope="col">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody id="tablaAdminUsuarios" aria-live="polite"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PESTAÑA 2: GESTIÓN DE MASCOTAS -->
+        <div class="tab-pane fade" id="admin-tab-mascotas" role="tabpanel">
+          <div class="tarjeta-suave p-0 overflow-hidden">
+            <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
+              <h4 class="h6 mb-0 fw-bold d-inline-flex align-items-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#c94c4c" class="me-2" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/></svg> Registro Global de Mascotas</h4>
+              <input type="search" id="filtroAdminMascotas" class="form-control form-control-sm w-auto" placeholder="Buscar mascota, especie o teléfono..." />
+            </div>
+            <div class="table-responsive">
               <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
                   <tr>
-                    <th class="ps-4" scope="col">Nombre</th>
-                    <th scope="col">Correo</th>
-                    <th scope="col">Rol</th>
-                    <th class="text-end pe-4" scope="col">Acciones</th>
+                    <th class="ps-4" scope="col">Mascota</th>
+                    <th scope="col">Especie / Raza</th>
+                    <th scope="col">Estado Actual</th>
+                    <th scope="col">Contacto Dueño</th>
+                    <th class="text-end pe-4" scope="col">Acciones de Control</th>
                   </tr>
                 </thead>
-                <tbody id="tablaAdminUsuarios" aria-live="polite"></tbody>
+                <tbody id="tablaAdminMascotas" aria-live="polite"></tbody>
               </table>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Tabla de Mascotas Registradas -->
-      <div class="tarjeta-suave p-0 overflow-hidden mb-4">
-        <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center">
-          <h4 class="h6 mb-0 fw-bold">Gestión de Mascotas Registradas</h4>
-          <input type="search" id="filtroAdminMascotas" class="form-control form-control-sm w-auto" placeholder="Buscar por mascota, especie o teléfono..." />
+        <!-- PESTAÑA 3: GESTIÓN DE HOMENAJES -->
+        <div class="tab-pane fade" id="admin-tab-memorial" role="tabpanel">
+          <div class="tarjeta-suave p-0 overflow-hidden">
+            <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center gap-2">
+              <h4 class="h6 mb-0 fw-bold d-inline-flex align-items-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#e9c46a" class="me-2" viewBox="0 0 16 16"><path d="M8 16a4 4 0 0 0 4-4c0-1.745-.899-3.28-2.265-4.165A4.002 4.002 0 0 0 14 4a4 4 0 0 0-4 4c0 1.745-.899 3.28-2.265 4.165A4.002 4.002 0 0 0 4 16a4 4 0 0 0 4-4z"/></svg> Homenajes en el Memorial</h4>
+              <input type="search" id="filtroAdminMemorial" class="form-control form-control-sm w-auto" placeholder="Buscar homenaje..." />
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th class="ps-4" scope="col">Mascota</th>
+                    <th scope="col">Especie</th>
+                    <th scope="col">Fecha de Partida</th>
+                    <th scope="col">Mensaje</th>
+                    <th class="text-end pe-4" scope="col">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="tablaAdminMemorial" aria-live="polite"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th class="ps-4" scope="col">Mascota</th>
-                <th scope="col">Especie</th>
-                <th scope="col">Estado</th>
-                <th scope="col">Contacto</th>
-                <th class="text-end pe-4" scope="col">Eliminar</th>
-              </tr>
-            </thead>
-            <tbody id="tablaAdminMascotas" aria-live="polite"></tbody>
-          </table>
-        </div>
-      </div>
 
-      <!-- Tabla de Memoriales (Admin) -->
-      <div class="tarjeta-suave p-0 overflow-hidden">
-        <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center">
-          <h4 class="h6 mb-0 fw-bold">Gestión de Homenajes (Memorial)</h4>
-          <input type="search" id="filtroAdminMemorial" class="form-control form-control-sm w-auto" placeholder="Buscar homenaje..." />
-        </div>
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th class="ps-4" scope="col">Mascota</th>
-                <th scope="col">Especie</th>
-                <th scope="col">Fallecimiento</th>
-                <th scope="col">Mensaje</th>
-                <th class="text-end pe-4" scope="col">Eliminar</th>
-              </tr>
-            </thead>
-            <tbody id="tablaAdminMemorial" aria-live="polite"></tbody>
-          </table>
-        </div>
       </div>
     </section>
 
@@ -522,10 +654,38 @@
       <div class="row justify-content-center">
         <div class="col-12 col-lg-8">
           <div class="tarjeta-suave p-4 p-md-5 text-center">
-            <div id="alertaMascotaPerdidaPublico" class="alert alert-danger fw-bold fs-4 d-none mb-4" role="alert">¡ESTA MASCOTA ESTÁ PERDIDA!</div>
+            <div id="alertaMascotaPerdidaPublico" class="alert alert-danger fw-bold fs-4 d-none mb-4" role="alert">
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="me-2" viewBox="0 0 16 16" style="vertical-align:-0.15em;"><path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg> ¡ESTA MASCOTA ESTÁ REPORTADA COMO PERDIDA!
+            </div>
             <img id="fotoMascotaPublico" class="img-fluid rounded-4 mb-3 d-none mx-auto" alt="Foto de la mascota" style="max-width: 420px;" />
             <h2 id="nombreMascotaPublico" class="titulo-principal mb-3">Nombre</h2>
             <p id="descripcionMascotaPublico" class="texto-secundario fs-5 mb-4">Descripción</p>
+            
+            <!-- INFORMACIÓN Y CONTACTO DEL DUEÑO SI ESTÁ PERDIDA -->
+            <div id="seccionContactoDuenoPublico" class="tarjeta-suave p-4 mb-4 text-start border border-danger border-2 d-none" style="background: rgba(220, 53, 69, 0.04);">
+              <h5 class="fw-bold text-danger mb-3 d-inline-flex align-items-center"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="me-2" viewBox="0 0 16 16"><path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm.5 4a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0zM7 7.5a.5.5 0 0 1 1 0v3a.5.5 0 0 1-1 0v-3z"/></svg> Información de Contacto del Dueño</h5>
+              <div class="row g-3 mb-3">
+                <div class="col-12 col-md-6">
+                  <div class="fw-bold text-muted small d-inline-flex align-items-center"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.568 17.568 0 0 0 4.168 6.608 17.569 17.569 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328z"/></svg> Teléfono del dueño</div>
+                  <div id="telefonoDuenoPublico" class="fs-5 fw-bold text-dark"></div>
+                </div>
+                <div class="col-12 col-md-6">
+                  <div class="fw-bold text-muted small d-inline-flex align-items-center"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg> Última zona vista</div>
+                  <div id="direccionDuenoPublico" class="fs-6 text-dark"></div>
+                </div>
+              </div>
+              <div class="d-flex flex-column flex-sm-row gap-2">
+                <a id="btnWhatsappDuenoPublico" href="#" target="_blank" class="btn btn-success fw-bold px-4 py-2 flex-fill d-inline-flex align-items-center justify-content-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-2" viewBox="0 0 16 16"><path d="M13.601 2.326A7.854 7.854 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.933 7.933 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.898 7.898 0 0 0 13.6 2.326zM7.994 14.521a6.573 6.573 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.557 6.557 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592zm3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.067-.315-.099-.448.099-.133.197-.513.646-.629.778-.117.132-.233.148-.43.05-.197-.099-.834-.308-1.589-.982-.587-.524-.984-1.17-1.101-1.368-.116-.198-.012-.304.086-.403.088-.088.197-.232.296-.348.1-.116.133-.197.198-.329.066-.133.033-.247-.017-.346-.05-.099-.448-1.08-.614-1.48-.162-.389-.327-.336-.448-.342-.115-.006-.247-.007-.379-.007s-.347.05-.529.247c-.182.198-.696.68-.696 1.658 0 .979.712 1.926.812 2.059.099.132 1.401 2.14 3.393 3.001.474.205.845.328 1.134.42.477.151.911.13 1.254.079.383-.057 1.17-.478 1.336-.94.165-.462.165-.858.116-.94-.049-.082-.182-.132-.379-.23z"/></svg> Contactar por WhatsApp</a>
+                <a id="btnLlamarDuenoPublico" href="#" class="btn btn-outline-danger fw-bold px-4 py-2 flex-fill d-inline-flex align-items-center justify-content-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-2" viewBox="0 0 16 16"><path d="M3.654 1.328a.678.678 0 0 0-1.015-.063L1.605 2.3c-.483.484-.661 1.169-.45 1.77a17.568 17.568 0 0 0 4.168 6.608 17.569 17.569 0 0 0 6.608 4.168c.601.211 1.286.033 1.77-.45l1.034-1.034a.678.678 0 0 0-.063-1.015l-2.307-1.794a.678.678 0 0 0-.58-.122l-2.19.547a1.745 1.745 0 0 1-1.657-.459L5.482 8.062a1.745 1.745 0 0 1-.46-1.657l.548-2.19a.678.678 0 0 0-.122-.58L3.654 1.328z"/></svg> Llamar Directo</a>
+              </div>
+            </div>
+
+            <!-- MAPA ZONA DE BÚSQUEDA -->
+            <div id="contenedorMapaPerfilPublico" class="mb-4 text-start d-none">
+              <h6 class="fw-bold text-danger mb-2 d-inline-flex align-items-center"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-2" viewBox="0 0 16 16"><path d="M8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10zm0-7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg> Zona del mapa donde se perdió (Aproximada)</h6>
+              <div id="mapa-perfil-publico" style="height: 320px; border-radius: 1rem; border: 1px solid var(--borde);"></div>
+            </div>
+
             <button type="button" id="btnContactarDuenoPublico" class="btn btn-danger fw-bold px-4 py-3 d-none">Contactar al dueño</button>
           </div>
         </div>
@@ -610,8 +770,9 @@
       <div class="memorial-bg p-4 p-md-5 mx-auto" style="max-width: 1400px;">
         <div class="estrellas"></div>
         <div class="text-center position-relative" style="z-index: 2;">
-          <h2 class="display-5 fw-bold text-white mb-2" style="text-shadow: 0 4px 10px rgba(0,0,0,0.5);">El Puente del Arcoíris</h2>
-          <p class="fs-5 text-light opacity-75">Un espacio de respeto y memoria para los que ya no están.</p>
+          <h2 class="display-5 fw-light text-white mb-3" style="text-shadow: 0 4px 15px rgba(255,255,255,0.2); letter-spacing: 1px; font-style: italic;">
+            "Un espacio de respeto y memoria para los que ya no están."
+          </h2>
           <button class="btn btn-outline-light rounded-pill px-4 mt-3 fw-bold" data-bs-toggle="modal" data-bs-target="#modalCrearMemorial">Rendir un homenaje</button>
         </div>
         <div id="espacioMemorialMap" class="w-100 mt-5 position-relative" style="height: 500px;"></div>
@@ -778,7 +939,17 @@
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="mapa.js?v=3"></script>
-  <script src="app.js?v=3"></script>
+  <script src="iconos.js?v=1"></script>
+  <script src="mapa.js?v=13"></script>
+  <script src="app.js?v=13"></script>
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('.tarjeta-suave, .titulo-principal, .texto-secundario, .btn-lg, .card-plantilla-hover').forEach(el => {
+        el.setAttribute('data-aos', 'fade-up');
+      });
+      AOS.init({ once: true, duration: 800, offset: 50 });
+    });
+  </script>
 </body>
 </html>

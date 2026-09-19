@@ -45,12 +45,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const alternarBotonCarga = (boton, cargando, texto = 'Procesando...') => {
     if (!boton) return;
     if (cargando) {
-      boton.dataset.textoOriginal = boton.textContent;
+      boton.dataset.htmlOriginal = boton.innerHTML;
       boton.disabled = true;
       boton.innerHTML = `<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>${texto}`;
     } else {
       boton.disabled = false;
-      boton.textContent = boton.dataset.textoOriginal || texto;
+      boton.innerHTML = boton.dataset.htmlOriginal || texto;
     }
   };
 
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
               zoomControl: false, attributionControl: false, fadeAnimation: false, zoomAnimation: false
           }).setView([lat, lng], 15);
           
-          L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { 
+          L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { 
               maxZoom: 19, crossOrigin: true 
           }).addTo(map);
 
@@ -121,14 +121,58 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => window.print(), 350);
   });
 
+  const generarBarcodeSVG = (texto, color = '#e7ddd2') => {
+    const patterns = {
+      '0': '000110100', '1': '100100001', '2': '001100001', '3': '101100000',
+      '4': '000110001', '5': '100110000', '6': '001110000', '7': '000100101',
+      '8': '100100100', '9': '001100100', 'A': '100001001', 'B': '001001001',
+      'C': '101001000', 'D': '000011001', 'E': '100011000', 'F': '001011000',
+      'G': '000001101', 'H': '100001100', 'I': '001001100', 'J': '000011100',
+      'K': '100000011', 'L': '001000011', 'M': '101000010', 'N': '000010011',
+      'O': '100010010', 'P': '001010010', 'Q': '000000111', 'R': '100000110',
+      'S': '001000110', 'T': '000010110', 'U': '110000001', 'V': '011000001',
+      'W': '111000000', 'X': '010010001', 'Y': '110010000', 'Z': '011010000',
+      '-': '010000101', '.': '110000100', ' ': '011000100', '*': '010010100'
+    };
+    const str = `*${String(texto).toUpperCase().replace(/[\*\s]+/g, '')}*`;
+    let x = 0;
+    let rects = '';
+    for (let i = 0; i < str.length; i++) {
+      const p = patterns[str[i]] || patterns['*'];
+      for (let j = 0; j < 9; j++) {
+        const isBar = j % 2 === 0;
+        const w = p[j] === '1' ? 3 : 1;
+        if (isBar) rects += `<rect x="${x}" y="0" width="${w}" height="25" fill="${color}"/>`;
+        x += w;
+      }
+      x += 1.5;
+    }
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${x} 25" style="width:100%;height:22px;max-width:180px;display:block;margin:auto;">${rects}</svg>`;
+  };
+
   const listarPlantillas = (tipo) => {
     return tipo === 'credencial' 
       ? [
-          { id: 'especial-miembro', nombre: 'Premium (2 Caras)', descripcion: 'Diseño oficial PetMap con QR trasero.', icon: '🏆' },
-          { id: 'clasica', nombre: 'Clásica (1 Cara)', descripcion: 'Tarjeta de identificación sencilla.', icon: '💳' }
+          { 
+            id: 'especial-miembro', 
+            nombre: 'Premium (2 Caras)', 
+            descripcion: 'Diseño oficial PetMap con QR trasero.', 
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="#f59e0b" viewBox="0 0 16 16"><path d="m8 0 1.669.864 1.858.282.842 1.68 1.337 1.32L13.4 6l.306 1.854-1.337 1.32-.842 1.68-1.858.282L8 12l-1.669-.864-1.858-.282-.842-1.68-1.337-1.32L2.6 6l-.306-1.854 1.337-1.32.842-1.68 1.858-.282L8 0z"/><path d="M4 11.794V16l4-1 4 1v-4.206l-2.018.306L8 13.126 6.018 12.1 4 11.794z"/></svg>` 
+          },
+          { 
+            id: 'clasica', 
+            nombre: 'Clásica (1 Cara)', 
+            descripcion: 'Tarjeta de identificación sencilla.', 
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="#2563eb" viewBox="0 0 16 16"><path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2zm4.5 0a.5.5 0 0 0 0 1h3a.5.5 0 0 0 0-1h-3zM8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm5 2.755C12.146 12.825 10.223 12 8 12s-4.146.826-5 1.755V14a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-.245z"/></svg>` 
+          }
         ]
       : [
-          { id: 'clasico', nombre: 'Cartel de Búsqueda Clásico', descripcion: 'Diseño vertical con mapa estático integrado.', icon: '🚨' }
+          { 
+            id: 'clasico', 
+            nombre: 'Cartel de Búsqueda Clásico', 
+            descripcion: 'Diseño vertical con mapa estático integrado.', 
+            icon: `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="#dc2626" viewBox="0 0 16 16"><path d="M11.46 14.572a1 1 0 0 0 .586-.293l4.243-4.243a1 1 0 0 0 .293-.586V4.54a1 1 0 0 0-.293-.586L12.046.293A1 1 0 0 0 11.46 0H4.54a1 1 0 0 0-.586.293L.293 4.54A1 1 0 0 0 0 5.126v6.914a1 1 0 0 0 .293.586l4.243 4.243a1 1 0 0 0 .586.293h6.914zM8 4c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995A.905.905 0 0 1 8 4zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/></svg>` 
+          }
         ];
   };
 
@@ -143,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
           div.innerHTML = `
             <div class="card border border-2 rounded-3 h-100 p-3 card-plantilla-hover" data-id="${p.id}" style="cursor: pointer; transition: all 0.2s;">
               <div class="d-flex align-items-center">
-                <div class="fs-1 me-3">${p.icon}</div>
+                <div class="fs-1 me-3 d-flex align-items-center">${p.icon}</div>
                 <div>
                   <h6 class="fw-bold mb-1">${p.nombre}</h6>
                   <p class="small text-muted mb-0">${p.descripcion}</p>
@@ -171,6 +215,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const fechaLimpia = m.fecha_nacimiento ? m.fecha_nacimiento.split('T')[0] : 'Desconocida';
       const nombreDueno = estado.usuario ? estado.usuario.nombre : 'Dueño';
 
+      const barcodeColor = idPlantilla === 'clasica' ? '#2e4a45' : '#e7ddd2';
+      const barcodeTexto = idPlantilla === 'clasica' ? curm : 'PETMAP';
+      const barcodeSvg = generarBarcodeSVG(barcodeTexto, barcodeColor);
+
       const datosVariables = {
           ...m,
           curm: curm,
@@ -181,7 +229,8 @@ document.addEventListener('DOMContentLoaded', () => {
           qr_perfil: m.qr_perfil || '',
           raza: m.raza || 'Mestizo',
           estado_texto: m.esta_perdida ? 'PERDIDA' : 'A SALVO',
-          estado_color: m.esta_perdida ? '#c94c4c' : '#2a7d4f'
+          estado_color: m.esta_perdida ? '#c94c4c' : '#2a7d4f',
+          barcode_svg: barcodeSvg
       };
       imprimirPlantilla('credencial', idPlantilla, datosVariables);
   };
@@ -225,9 +274,9 @@ document.addEventListener('DOMContentLoaded', () => {
           let valor = datos[prop];
           if (valor === undefined || valor === null) return '';
           
-          // Tratamiento especializado para rutas de imágenes (Evita XSS sin corromper la URL/Base64)
-          if (['qr', 'qr_perfil', 'foto', 'foto_url', 'mapa_extravio'].includes(prop)) {
-             return String(valor).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+          // Tratamiento especializado para rutas de imágenes y SVG de código de barras
+          if (['qr', 'qr_perfil', 'foto', 'foto_url', 'mapa_extravio', 'barcode_svg'].includes(prop)) {
+             return String(valor);
           }
 
           // Texto general estricto contra HTML
@@ -337,8 +386,8 @@ document.addEventListener('DOMContentLoaded', () => {
   /* =================================================================================
      VALIDACIONES INLINE Y GESTIÓN DE ERRORES (AUTENTICACIÓN)
   ================================================================================= */
-  const svgOjoCerrado = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
-  const svgOjoAbierto = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+  const svgOjoCerrado = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+  const svgOjoAbierto = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
 
   const alternarVisibilidadPass = (input, btn) => {
     const isPassword = input.type === 'password';
@@ -411,10 +460,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const cumple = r.exp.test(val);
       if(cumple) {
         item.className = 'req-item valid';
-        item.innerHTML = `<span class="req-icon">✓</span> ${item.textContent.substring(2)}`;
+        item.innerHTML = `<span class="req-icon">${window.PETMAP_ICONOS ? window.PETMAP_ICONOS.check(14) : ''}</span> ${item.textContent.substring(2)}`;
       } else {
         item.className = `req-item ${val.length > 0 ? 'invalid' : 'neutral'}`;
-        item.innerHTML = `<span class="req-icon">✕</span> ${item.textContent.substring(2)}`;
+        item.innerHTML = `<span class="req-icon">${window.PETMAP_ICONOS ? window.PETMAP_ICONOS.error(14) : ''}</span> ${item.textContent.substring(2)}`;
         todasValidas = false;
       }
     });
@@ -432,11 +481,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (coinciden) {
       confInput.classList.remove('is-invalid');
       confInput.classList.add('is-valid');
-      if(msg) { msg.className = 'invalid-feedback d-block text-success'; msg.textContent = '✓ Las contraseñas coinciden'; }
+      if(msg) { msg.className = 'invalid-feedback d-block text-success'; msg.innerHTML = `${window.PETMAP_ICONOS ? window.PETMAP_ICONOS.check(14, '#198754', 'me-1') : ''} Las contraseñas coinciden`; }
     } else {
       confInput.classList.remove('is-valid');
       confInput.classList.add('is-invalid');
-      if(msg) { msg.className = 'invalid-feedback d-block'; msg.textContent = '✕ Las contraseñas no coinciden'; }
+      if(msg) { msg.className = 'invalid-feedback d-block'; msg.innerHTML = `${window.PETMAP_ICONOS ? window.PETMAP_ICONOS.error(14, '#dc3545', 'me-1') : ''} Las contraseñas no coinciden`; }
     }
     return coinciden;
   };
@@ -549,7 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const collapse = document.getElementById('navbarContent');
     if (collapse?.classList.contains('show')) bootstrap.Collapse.getInstance(collapse)?.hide();
 
-    const seguras = ['mis-mascotas', 'admin', 'registro-exitoso', 'perfil-privado', 'boletin-contacto', 'registro'];
+    const seguras = ['mi-perfil', 'mis-mascotas', 'admin', 'registro-exitoso', 'perfil-privado', 'boletin-contacto', 'registro'];
     if (seguras.includes(vista) && !estado.usuario) return redirigirLogin();
 
     if ((vista === 'perfil-privado' || vista === 'registro-exitoso') && !estado.mascotaActual) {
@@ -582,6 +631,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (vista === 'admin') { cargarMascotasAdmin(); cargarUsuariosAdmin(); cargarMemorialAdmin(); }
     if (vista === 'mis-mascotas') cargarMisMascotas();
+    if (vista === 'mi-perfil' && estado.usuario) {
+      document.getElementById('perfilNombre').value = estado.usuario.nombre || '';
+      document.getElementById('perfilCorreo').value = estado.usuario.correo || '';
+      document.getElementById('perfilContrasena').value = '';
+    }
     if (vista === 'memorial') cargarMemoriales();
   };
 
@@ -600,19 +654,28 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.addEventListener('click', (e) => {
-    if (e.target.classList.contains('btn-borrar-mascota')) {
-      window.borrarMascotaAdmin(e.target.dataset.id);
-    } else if (e.target.classList.contains('btn-borrar-usuario')) {
-      window.eliminarUsuario(e.target.dataset.id);
-    } else if (e.target.classList.contains('btn-borrar-memorial')) {
-      window.borrarMemorialAdmin(e.target.dataset.id);
-    } else if (e.target.classList.contains('btn-abrir-perfil')) {
-      window.petmapUI.abrirPrivado(e.target.dataset.mascota);
-    } else if (e.target.classList.contains('btn-preparar-estado')) {
-      const t = e.target;
-      window.petmapUI.prepararEstado(t.dataset.id, t.dataset.perdida, t.dataset.tel, t.dataset.dir);
-    } else if (e.target.classList.contains('btn-abrir-publico')) {
-      window.abrirPerfilPublico(decodeURIComponent(e.target.dataset.mascota));
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    if (btn.classList.contains('btn-borrar-mascota')) {
+      window.borrarMascotaAdmin(btn.dataset.id);
+    } else if (btn.classList.contains('btn-borrar-usuario')) {
+      window.eliminarUsuario(btn.dataset.id);
+    } else if (btn.classList.contains('btn-borrar-memorial')) {
+      window.borrarMemorialAdmin(btn.dataset.id);
+    } else if (btn.classList.contains('btn-abrir-perfil')) {
+      window.petmapUI.abrirPrivado(btn.dataset.mascota);
+    } else if (btn.classList.contains('btn-preparar-estado')) {
+      window.petmapUI.prepararEstado(btn.dataset.id, btn.dataset.perdida, btn.dataset.tel, btn.dataset.dir);
+    } else if (btn.classList.contains('btn-abrir-publico')) {
+      window.abrirPerfilPublico(decodeURIComponent(btn.dataset.mascota));
+    } else if (btn.classList.contains('btn-cambiar-estado-admin')) {
+      window.cambiarEstadoMascotaAdmin(btn.dataset.id, btn.dataset.perdida);
+    } else if (btn.classList.contains('btn-editar-usuario-admin')) {
+      window.cargarEdicionUsuarioAdmin(decodeURIComponent(btn.dataset.usuario));
+    } else if (btn.classList.contains('btn-editar-mascota-admin')) {
+      window.editarMascotaAdminModal(btn.dataset.mascota);
+    } else if (btn.classList.contains('btn-editar-memorial-admin')) {
+      window.editarMemorialAdminModal(btn.dataset.memorial);
     }
   });
 
@@ -660,21 +723,122 @@ document.addEventListener('DOMContentLoaded', () => {
   const cargarMemoriales = () => procesarPeticion('/api/memorial', {}, (d) => {
     if (!DOM.espacioMemorial) return;
     DOM.espacioMemorial.innerHTML = '';
+    
+    // Inyectar CSS dinámico para el memorial
+    if(!document.getElementById('memorialRadicalStyles')) {
+      const st = document.createElement('style');
+      st.id = 'memorialRadicalStyles';
+      st.innerHTML = `
+        .contenedor-homenaje {
+          position: absolute;
+          border-radius: 50%;
+          cursor: pointer;
+          transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+          animation: float-radical 8s ease-in-out infinite alternate;
+          box-shadow: 0 0 20px rgba(255, 215, 0, 0.4), inset 0 0 15px rgba(255, 255, 255, 0.6);
+        }
+        .contenedor-homenaje::before {
+          content: '';
+          position: absolute;
+          top: -15px; left: -15px; right: -15px; bottom: -15px;
+          border-radius: 50%;
+          background: radial-gradient(circle, rgba(255,215,0,0.5) 0%, rgba(255,255,255,0) 70%);
+          z-index: -1;
+          animation: pulse-aura 4s ease-in-out infinite alternate;
+        }
+        .contenedor-homenaje:hover {
+          transform: scale(1.3) translateY(-10px);
+          z-index: 100;
+          box-shadow: 0 0 40px rgba(255, 215, 0, 0.8), inset 0 0 20px rgba(255, 255, 255, 0.8);
+        }
+        .contenedor-homenaje img {
+          width: 100%; height: 100%;
+          object-fit: cover;
+          border-radius: 50%;
+          border: 3px solid rgba(255, 215, 0, 0.7);
+        }
+        .etiqueta-homenaje {
+          position: absolute;
+          bottom: -35px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(0,0,0,0.8);
+          color: #fff;
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-size: 0.9rem;
+          white-space: nowrap;
+          opacity: 0;
+          transition: opacity 0.3s;
+          pointer-events: none;
+        }
+        .contenedor-homenaje:hover .etiqueta-homenaje {
+          opacity: 1;
+        }
+        @keyframes float-radical {
+          0% { transform: translateY(0) rotate(0deg); }
+          50% { transform: translateY(-35px) rotate(5deg); }
+          100% { transform: translateY(20px) rotate(-5deg); }
+        }
+        @keyframes pulse-aura {
+          0% { transform: scale(0.9); opacity: 0.4; }
+          100% { transform: scale(1.4); opacity: 0.9; }
+        }
+        .particula-luz {
+          position: absolute;
+          background: white;
+          border-radius: 50%;
+          pointer-events: none;
+          box-shadow: 0 0 12px 3px rgba(255,255,255,0.9);
+          animation: float-up linear infinite;
+        }
+        @keyframes float-up {
+          0% { transform: translateY(0) scale(1); opacity: 1; }
+          100% { transform: translateY(-100vh) scale(0); opacity: 0; }
+        }
+      `;
+      document.head.appendChild(st);
+    }
+
+    // Partículas de luz de fondo
+    for(let i=0; i<40; i++) {
+      const p = document.createElement('div');
+      p.className = 'particula-luz';
+      p.style.width = Math.random() * 4 + 2 + 'px';
+      p.style.height = p.style.width;
+      p.style.left = Math.random() * 100 + '%';
+      p.style.top = Math.random() * 100 + 50 + '%';
+      p.style.animationDuration = (Math.random() * 15 + 8) + 's';
+      p.style.animationDelay = (Math.random() * 10) + 's';
+      DOM.espacioMemorial.appendChild(p);
+    }
+
     d.memoriales.forEach(m => {
-      const size = Math.floor(Math.random() * 50) + 70;
-      const top = Math.random() * 80;
-      const left = Math.random() * 85;
-      const delay = Math.random() * 5;
+      const size = Math.floor(Math.random() * 60) + 80;
+      const top = Math.random() * 70 + 10;
+      const left = Math.random() * 80 + 10;
+      const delay = Math.random() * 8;
+      
+      const wrapper = document.createElement('div');
+      wrapper.className = 'contenedor-homenaje';
+      wrapper.style.width = `${size}px`;
+      wrapper.style.height = `${size}px`;
+      wrapper.style.top = `${top}%`;
+      wrapper.style.left = `${left}%`;
+      wrapper.style.animationDelay = `${delay}s`;
+      
       const img = document.createElement('img');
       img.src = m.foto_url;
-      img.className = 'foto-flotante';
-      img.style.width = `${size}px`;
-      img.style.height = `${size}px`;
-      img.style.top = `${top}%`;
-      img.style.left = `${left}%`;
-      img.style.animationDelay = `${delay}s`;
       img.alt = escaparHtml(m.nombre);
-      img.onclick = () => {
+      
+      const label = document.createElement('div');
+      label.className = 'etiqueta-homenaje fw-bold';
+      label.innerHTML = (window.PETMAP_ICONOS ? window.PETMAP_ICONOS.flor(14, '#ffd700', 'me-1') : '') + escaparHtml(m.nombre);
+
+      wrapper.appendChild(img);
+      wrapper.appendChild(label);
+      
+      wrapper.onclick = () => {
         document.getElementById('modalMemFoto').src = m.foto_url;
         document.getElementById('modalMemNombre').textContent = m.nombre;
         document.getElementById('modalMemFechas').textContent = `Partió el ${m.fecha_fallecimiento ? m.fecha_fallecimiento.split('T')[0] : ''}`;
@@ -690,7 +854,7 @@ document.addEventListener('DOMContentLoaded', () => {
         newBtn.onclick = () => encenderVeladora(m.id, newBtn);
         new bootstrap.Modal(document.getElementById('modalMemorialInfo')).show();
       };
-      DOM.espacioMemorial.appendChild(img);
+      DOM.espacioMemorial.appendChild(wrapper);
     });
   });
 
@@ -709,22 +873,66 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const cargarMisMascotas = () => procesarPeticion('/api/mascotas/mis-mascotas', { credentials: 'include' }, (datos) => {
-    DOM.contenedorMisMascotas.innerHTML = datos.mascotas.length === 0 ? '<div class="col-12 text-center p-5 bg-white rounded-4 border">No tienes mascotas registradas.</div>' : '';
+    DOM.contenedorMisMascotas.innerHTML = datos.mascotas.length === 0 ? '<div class="col-12 text-center p-5 bg-white rounded-4 border"><div class="text-secondary mb-3">' + (window.PETMAP_ICONOS ? window.PETMAP_ICONOS.mascota(48, '#adb5bd', '') : '') + '</div><h4 class="fw-bold">No tienes mascotas registradas.</h4><p class="text-muted">Agrega tu primera mascota para comenzar.</p></div>' : '';
     const frag = document.createDocumentFragment();
     datos.mascotas.forEach(m => {
       const div = document.createElement('div');
       div.className = 'col-12 col-md-6 col-xl-4';
+      
+      const esPerdida = m.esta_perdida;
+      const iconoEstado = esPerdida ? (window.PETMAP_ICONOS ? window.PETMAP_ICONOS.alerta(14, '#ffffff', 'me-1') : '') : (window.PETMAP_ICONOS ? window.PETMAP_ICONOS.check(14, '#ffffff', 'me-1') : '');
+      const badgeClase = esPerdida ? 'bg-danger' : 'bg-success';
+      const textoEstado = esPerdida ? 'Perdida' : 'A Salvo';
+      const fotoHtml = m.foto_url 
+        ? `<img src="${m.foto_url}" alt="${escaparHtml(m.nombre)}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">` 
+        : `<div class="w-100 h-100 d-flex justify-content-center align-items-center bg-light">
+             ${window.PETMAP_ICONOS ? window.PETMAP_ICONOS.mascota(64, '#adb5bd', '') : ''}
+           </div>`;
+
       div.innerHTML = `
-        <div class="tarjeta-suave p-4 h-100 d-flex flex-column gap-3 shadow-sm border-0">
-          <div class="d-flex justify-content-between">
-            <h3 class="h5 fw-bold mb-0">${escaparHtml(m.nombre)} <small class="text-muted d-block fw-normal fs-6">${escaparHtml(m.especie)}</small></h3>
-            <span class="badge ${m.esta_perdida ? 'bg-danger' : 'bg-success'}">${m.esta_perdida ? 'Perdida' : 'A Salvo'}</span>
+        <div class="tarjeta-suave p-0 h-100 d-flex flex-column shadow-sm border-0 overflow-hidden position-relative" style="border-radius: 1rem;">
+          <!-- Contenedor de Imagen -->
+          <div class="position-relative overflow-hidden" style="height: 220px; background-color: #f8f9fa;">
+            ${fotoHtml}
+            <!-- Badge de Estado -->
+            <div class="position-absolute top-0 end-0 p-3" style="z-index: 2;">
+              <span class="badge ${badgeClase} shadow fs-6 rounded-pill px-3 py-2 border border-white border-2">
+                ${iconoEstado} ${textoEstado}
+              </span>
+            </div>
+            <!-- Gradiente y Título Superpuesto -->
+            <div class="position-absolute bottom-0 start-0 w-100 p-3 pt-5 text-white" style="background: linear-gradient(to top, rgba(0,0,0,0.85), transparent); z-index: 2;">
+              <h3 class="h4 fw-bold mb-0 text-white" style="text-shadow: 1px 1px 4px rgba(0,0,0,0.6);">${escaparHtml(m.nombre)}</h3>
+              <p class="mb-0 fw-semibold text-white-50" style="text-shadow: 1px 1px 4px rgba(0,0,0,0.6); font-size: 0.95rem;">
+                ${escaparHtml(m.especie)} ${m.raza ? `&bull; ${escaparHtml(m.raza)}` : ''}
+              </p>
+            </div>
           </div>
-          <p class="text-muted small mb-0 flex-grow-1">${escaparHtml(m.descripcion || 'Sin descripción')}</p>
-          <div class="d-flex gap-2 mt-3 pt-3 border-top">
-            <button class="btn btn-sm btn-outline-primary flex-grow-1 fw-bold btn-abrir-perfil" data-mascota="${encodeURIComponent(JSON.stringify(m))}">Perfil / ID</button>
-            <button class="btn btn-sm btn-outline-dark flex-grow-1 fw-bold btn-preparar-estado" data-id="${m.id}" data-perdida="${m.esta_perdida}" data-tel="${escaparHtml(m.telefono_dueno)}" data-dir="${escaparHtml(m.direccion_dueno)}">Estado</button>
-            <button class="btn btn-sm btn-outline-danger fw-bold btn-borrar-mascota" data-id="${m.id}">Borrar</button>
+          
+          <!-- Contenido Inferior -->
+          <div class="p-4 d-flex flex-column flex-grow-1 bg-white">
+            <p class="text-secondary small mb-4 flex-grow-1" style="display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.6;">
+              ${escaparHtml(m.descripcion || 'Sin descripción')}
+            </p>
+            
+            <!-- Botonera -->
+            <div class="row g-2 mt-auto">
+              <div class="col-6">
+                <button class="btn btn-primary w-100 fw-bold d-inline-flex align-items-center justify-content-center btn-abrir-perfil rounded-3 shadow-sm py-2" data-mascota="${encodeURIComponent(JSON.stringify(m))}">
+                  ${window.PETMAP_ICONOS ? window.PETMAP_ICONOS.credencial(18, 'currentColor', 'me-2') : ''} Perfil / ID
+                </button>
+              </div>
+              <div class="col-6">
+                <button class="btn btn-dark w-100 fw-bold d-inline-flex align-items-center justify-content-center btn-preparar-estado rounded-3 shadow-sm py-2" data-id="${m.id}" data-perdida="${m.esta_perdida}" data-tel="${escaparHtml(m.telefono_dueno)}" data-dir="${escaparHtml(m.direccion_dueno)}">
+                  ${window.PETMAP_ICONOS ? window.PETMAP_ICONOS.estado(18, 'currentColor', 'me-2') : ''} Estado
+                </button>
+              </div>
+              <div class="col-12 mt-2">
+                <button class="btn btn-outline-danger w-100 fw-bold d-inline-flex align-items-center justify-content-center btn-borrar-mascota rounded-3 py-2" data-id="${m.id}">
+                  ${window.PETMAP_ICONOS ? window.PETMAP_ICONOS.basura(16, 'currentColor', 'me-2') : ''} Eliminar Mascota
+                </button>
+              </div>
+            </div>
           </div>
         </div>`;
       frag.appendChild(div);
@@ -740,13 +948,28 @@ document.addEventListener('DOMContentLoaded', () => {
       const tabla = document.getElementById('tablaAdminMascotas');
       if (!tabla) return;
       tabla.innerHTML = '';
-      if (!datos.mascotas || datos.mascotas.length === 0) {
+      const mascotas = datos.mascotas || [];
+      
+      if (document.getElementById('kpiTotalMascotas')) document.getElementById('kpiTotalMascotas').textContent = mascotas.length;
+      if (document.getElementById('badgeCountMascotas')) document.getElementById('badgeCountMascotas').textContent = mascotas.length;
+
+      if (mascotas.length === 0) {
         tabla.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No hay mascotas registradas.</td></tr>';
         return;
       }
-      datos.mascotas.forEach(m => {
+      mascotas.forEach(m => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="fw-bold">${escaparHtml(m.nombre)}</td><td>${escaparHtml(m.especie)}</td><td><span class="badge ${m.esta_perdida ? 'bg-danger' : 'bg-success'}">${m.esta_perdida ? 'Perdida' : 'A Salvo'}</span></td><td>${escaparHtml(m.telefono_dueno || 'Sin contacto')}</td><td class="text-end"><button class="btn btn-outline-danger btn-sm btn-borrar-mascota" data-id="${m.id}">Eliminar</button></td>`;
+        const fotoImg = m.foto_url ? `<img src="${m.foto_url}" class="rounded-circle me-2" style="width:36px;height:36px;object-fit:cover;"/>` : `<div class="rounded-circle bg-secondary bg-opacity-10 d-inline-flex align-items-center justify-content-center me-2" style="width:36px;height:36px;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="text-secondary" viewBox="0 0 16 16"><path d="M8 1.314C12.438-3.248 23.534 4.735 8 15-7.534 4.736 3.562-3.248 8 1.314z"/></svg></div>`;
+        tr.innerHTML = `
+          <td class="ps-4 fw-bold align-middle">${fotoImg} ${escaparHtml(m.nombre)}</td>
+          <td class="align-middle"><span class="badge bg-light text-dark border">${escaparHtml(m.especie)}</span> <small class="text-muted ms-1">${escaparHtml(m.raza || '')}</small></td>
+          <td class="align-middle"><span class="badge ${m.esta_perdida ? 'bg-danger' : 'bg-success'}">${m.esta_perdida ? (window.PETMAP_ICONOS ? window.PETMAP_ICONOS.alerta(12, '#ffffff', 'me-1') : '') + 'Perdida' : (window.PETMAP_ICONOS ? window.PETMAP_ICONOS.check(12, '#ffffff', 'me-1') : '') + 'A Salvo'}</span></td>
+          <td class="align-middle small">${escaparHtml(m.telefono_dueno || 'Sin contacto')}</td>
+          <td class="text-end pe-4 align-middle">
+            <button class="btn btn-outline-primary btn-sm me-1 btn-editar-mascota-admin d-inline-flex align-items-center" data-mascota="${encodeURIComponent(JSON.stringify(m))}" title="Editar Datos"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg> Editar</button>
+            <button class="btn btn-outline-warning btn-sm fw-bold me-1 btn-cambiar-estado-admin d-inline-flex align-items-center" data-id="${m.id}" data-perdida="${m.esta_perdida}" title="Cambiar Estado"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg> Estado</button>
+            <button class="btn btn-outline-danger btn-sm btn-borrar-mascota d-inline-flex align-items-center" data-id="${m.id}" title="Eliminar"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg> Eliminar</button>
+          </td>`;
         tabla.appendChild(tr);
       });
     } catch (e) { Swal.fire('Error', 'No se pudieron cargar las mascotas.', 'error'); }
@@ -759,13 +982,27 @@ document.addEventListener('DOMContentLoaded', () => {
       const datos = await resp.json();
       if (!DOM.tablaAdminUsuarios) return;
       DOM.tablaAdminUsuarios.innerHTML = '';
-      if (!datos.usuarios || datos.usuarios.length === 0) {
+      const usuarios = datos.usuarios || [];
+      const totalCount = datos.total !== undefined ? datos.total : usuarios.length;
+
+      if (document.getElementById('kpiTotalUsuarios')) document.getElementById('kpiTotalUsuarios').textContent = totalCount;
+      if (document.getElementById('badgeCountUsuarios')) document.getElementById('badgeCountUsuarios').textContent = totalCount;
+
+      if (usuarios.length === 0) {
         DOM.tablaAdminUsuarios.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">No hay usuarios.</td></tr>';
         return;
       }
-      datos.usuarios.forEach(u => {
+      usuarios.forEach(u => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="fw-bold">${escaparHtml(u.nombre)}</td><td>${escaparHtml(u.correo)}</td><td><span class="badge ${u.rol === 'superadmin' ? 'bg-dark' : 'bg-primary'}">${escaparHtml(u.rol)}</span></td><td class="text-end"><button class="btn btn-outline-danger btn-sm btn-borrar-usuario" data-id="${u.id}">Eliminar</button></td>`;
+        const badgeColor = u.rol === 'superadmin' ? 'bg-dark' : (u.rol === 'admin' ? 'bg-primary' : 'bg-secondary bg-opacity-75');
+        tr.innerHTML = `
+          <td class="ps-4 fw-bold align-middle"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="me-2 text-secondary" viewBox="0 0 16 16"><path d="M11 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/><path fill-rule="evenodd" d="M0 8a8 8 0 1 1 16 0A8 8 0 0 0 0 8zm8-7a7 7 0 0 0-5.468 11.37C3.242 11.226 4.805 10 8 10s4.757 1.225 5.468 2.37A7 7 0 0 0 8 1z"/></svg> ${escaparHtml(u.nombre)}</td>
+          <td class="align-middle small">${escaparHtml(u.correo)}</td>
+          <td class="align-middle"><span class="badge ${badgeColor}">${escaparHtml(u.rol)}</span></td>
+          <td class="text-end pe-4 align-middle">
+            <button class="btn btn-outline-primary btn-sm me-1 btn-editar-usuario-admin d-inline-flex align-items-center" data-usuario="${encodeURIComponent(JSON.stringify(u))}" title="Editar"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg> Editar</button>
+            <button class="btn btn-outline-danger btn-sm btn-borrar-usuario d-inline-flex align-items-center" data-id="${u.id}" title="Eliminar"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg> Eliminar</button>
+          </td>`;
         DOM.tablaAdminUsuarios.appendChild(tr);
       });
     } catch (e) { Swal.fire('Error', 'No se pudieron cargar los usuarios.', 'error'); }
@@ -779,13 +1016,27 @@ document.addEventListener('DOMContentLoaded', () => {
       const tabla = document.getElementById('tablaAdminMemorial');
       if (!tabla) return;
       tabla.innerHTML = '';
-      if (!datos.memoriales || datos.memoriales.length === 0) {
+      const memoriales = datos.memoriales || [];
+
+      if (document.getElementById('kpiTotalMemorial')) document.getElementById('kpiTotalMemorial').textContent = memoriales.length;
+      if (document.getElementById('badgeCountMemorial')) document.getElementById('badgeCountMemorial').textContent = memoriales.length;
+
+      if (memoriales.length === 0) {
         tabla.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No hay homenajes registrados.</td></tr>';
         return;
       }
-      datos.memoriales.forEach(m => {
+      memoriales.forEach(m => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td class="fw-bold">${escaparHtml(m.nombre)}</td><td>${escaparHtml(m.especie)}</td><td>${m.fecha_fallecimiento ? m.fecha_fallecimiento.split('T')[0] : ''}</td><td><small class="text-muted d-inline-block text-truncate" style="max-width: 150px;">${escaparHtml(m.mensaje)}</small></td><td class="text-end"><button class="btn btn-outline-danger btn-sm btn-borrar-memorial" data-id="${m.id}">Eliminar</button></td>`;
+        const fotoImg = m.foto_url ? `<img src="${m.foto_url}" class="rounded-circle me-2" style="width:36px;height:36px;object-fit:cover;"/>` : `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="me-2 text-warning" viewBox="0 0 16 16"><path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm.93-9.412-1 4.705c-.07.34.029.533.304.533.194 0 .487-.07.686-.246l-.088.416c-.287.346-.92.598-1.465.598-.703 0-1.002-.422-.808-1.319l.738-3.468c.064-.293.006-.399-.287-.47l.451-.081.97-.268zM8 5.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/></svg>`;
+        tr.innerHTML = `
+          <td class="ps-4 fw-bold align-middle">${fotoImg} ${escaparHtml(m.nombre)}</td>
+          <td class="align-middle"><span class="badge bg-light text-dark border">${escaparHtml(m.especie)}</span></td>
+          <td class="align-middle small">${m.fecha_fallecimiento ? m.fecha_fallecimiento.split('T')[0] : 'N/A'}</td>
+          <td class="align-middle"><small class="text-muted d-inline-block text-truncate" style="max-width: 200px;">"${escaparHtml(m.mensaje)}"</small></td>
+          <td class="text-end pe-4 align-middle">
+            <button class="btn btn-outline-primary btn-sm me-1 btn-editar-memorial-admin d-inline-flex align-items-center" data-memorial="${encodeURIComponent(JSON.stringify(m))}" title="Editar Homenaje"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168l10-10zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293l6.5-6.5zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325z"/></svg> Editar</button>
+            <button class="btn btn-outline-danger btn-sm btn-borrar-memorial d-inline-flex align-items-center" data-id="${m.id}" title="Eliminar"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/><path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/></svg> Eliminar</button>
+          </td>`;
         tabla.appendChild(tr);
       });
     } catch (e) { Swal.fire('Error', 'No se pudieron cargar los homenajes.', 'error'); }
@@ -805,6 +1056,182 @@ document.addEventListener('DOMContentLoaded', () => {
   aplicarFiltroTabla('filtroAdminUsuarios', 'tablaAdminUsuarios');
   aplicarFiltroTabla('filtroAdminMascotas', 'tablaAdminMascotas');
   aplicarFiltroTabla('filtroAdminMemorial', 'tablaAdminMemorial');
+
+  window.cambiarEstadoMascotaAdmin = async (id, perdidaActual) => {
+    const esPerdida = perdidaActual === 'true' || perdidaActual === true;
+    try {
+      const resp = await fetch(`/api/mascotas/${id}/estado`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ esta_perdida: !esPerdida })
+      });
+      if (!resp.ok) throw new Error('Error al actualizar el estado de la mascota.');
+      Swal.fire({ title: 'Estado de mascota actualizado', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1500 });
+      cargarMascotasAdmin();
+    } catch (e) {
+      Swal.fire('Error', e.message, 'error');
+    }
+  };
+
+  window.editarMascotaAdminModal = async (mJson) => {
+    const m = JSON.parse(decodeURIComponent(mJson));
+    const { value: formValues } = await Swal.fire({
+      title: `Editar Mascota: ${m.nombre}`,
+      html: `
+        <div class="text-start">
+          <label class="form-label small fw-bold mb-1">Nombre</label>
+          <input id="swal-nombre-mascota" class="swal2-input mt-0 mb-3 w-100" value="${escaparHtml(m.nombre)}" placeholder="Nombre">
+          <label class="form-label small fw-bold mb-1">Especie</label>
+          <input id="swal-especie-mascota" class="swal2-input mt-0 mb-3 w-100" value="${escaparHtml(m.especie)}" placeholder="Especie">
+          <label class="form-label small fw-bold mb-1">Raza</label>
+          <input id="swal-raza-mascota" class="swal2-input mt-0 mb-3 w-100" value="${escaparHtml(m.raza || '')}" placeholder="Raza">
+          <label class="form-label small fw-bold mb-1">Descripción</label>
+          <textarea id="swal-desc-mascota" class="swal2-textarea mt-0 w-100" rows="3" placeholder="Descripción">${escaparHtml(m.descripcion || '')}</textarea>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar Cambios',
+      cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        return {
+          nombre: document.getElementById('swal-nombre-mascota').value,
+          especie: document.getElementById('swal-especie-mascota').value,
+          raza: document.getElementById('swal-raza-mascota').value,
+          descripcion: document.getElementById('swal-desc-mascota').value
+        };
+      }
+    });
+
+    if (formValues) {
+      try {
+        const resp = await fetch(`/api/mascotas/${m.id}/datos`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(formValues)
+        });
+        let data = {};
+        try { data = await resp.json(); } catch(err) {}
+        if (!resp.ok) throw new Error(data.mensaje || `Error del servidor (${resp.status}). Si el servidor Node no se ha reiniciado, por favor reinícialo para activar las rutas de edición.`);
+        Swal.fire('Actualizada', 'La información de la mascota ha sido modificada.', 'success');
+        cargarMascotasAdmin();
+      } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+      }
+    }
+  };
+
+  window.editarMemorialAdminModal = async (mJson) => {
+    const m = JSON.parse(decodeURIComponent(mJson));
+    const { value: formValues } = await Swal.fire({
+      title: `Editar Homenaje: ${m.nombre}`,
+      html: `
+        <div class="text-start">
+          <label class="form-label small fw-bold mb-1">Nombre</label>
+          <input id="swal-nombre-mem" class="swal2-input mt-0 mb-3 w-100" value="${escaparHtml(m.nombre)}" placeholder="Nombre">
+          <label class="form-label small fw-bold mb-1">Especie</label>
+          <input id="swal-especie-mem" class="swal2-input mt-0 mb-3 w-100" value="${escaparHtml(m.especie)}" placeholder="Especie">
+          <label class="form-label small fw-bold mb-1">Mensaje de despedida</label>
+          <textarea id="swal-mensaje-mem" class="swal2-textarea mt-0 w-100" rows="3" placeholder="Mensaje">${escaparHtml(m.mensaje || '')}</textarea>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar Cambios',
+      cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        return {
+          nombre: document.getElementById('swal-nombre-mem').value,
+          especie: document.getElementById('swal-especie-mem').value,
+          mensaje: document.getElementById('swal-mensaje-mem').value
+        };
+      }
+    });
+
+    if (formValues) {
+      try {
+        const resp = await fetch(`/api/memorial/${m.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(formValues)
+        });
+        let data = {};
+        try { data = await resp.json(); } catch(err) {}
+        if (!resp.ok) throw new Error(data.mensaje || `Error del servidor (${resp.status}). Si el servidor Node no se ha reiniciado, por favor reinícialo para activar las rutas de edición.`);
+        Swal.fire('Actualizado', 'El homenaje fue modificado correctamente.', 'success');
+        cargarMemorialAdmin();
+      } catch (e) {
+        Swal.fire('Error', e.message, 'error');
+      }
+    }
+  };
+
+  window.cargarEdicionUsuarioAdmin = (uJson) => {
+    const u = JSON.parse(uJson);
+    estado.usuarioAdminEditandoId = u.id;
+    document.getElementById('adminUserNombre').value = u.nombre;
+    document.getElementById('adminUserCorreo').value = u.correo;
+    document.getElementById('adminUserPassword').value = '';
+    document.getElementById('adminUserRol').value = u.rol;
+    document.getElementById('tituloFormUsuarioAdmin').textContent = 'Editar usuario';
+    document.getElementById('btnGuardarUsuarioAdmin').textContent = 'Guardar Cambios';
+    document.getElementById('btnCancelarEdicionUsuarioAdmin').classList.remove('d-none');
+  };
+
+  document.getElementById('btnCancelarEdicionUsuarioAdmin')?.addEventListener('click', () => {
+    estado.usuarioAdminEditandoId = null;
+    document.getElementById('formUsuarioAdmin')?.reset();
+    document.getElementById('tituloFormUsuarioAdmin').textContent = 'Crear Nuevo Usuario';
+    document.getElementById('btnGuardarUsuarioAdmin').textContent = 'Guardar Usuario';
+    document.getElementById('btnCancelarEdicionUsuarioAdmin').classList.add('d-none');
+  });
+
+  document.getElementById('btnRefrescarAdmin')?.addEventListener('click', () => {
+    cargarUsuariosAdmin();
+    cargarMascotasAdmin();
+    cargarMemorialAdmin();
+    Swal.fire({ title: 'Métricas Actualizadas', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 1200 });
+  });
+
+  document.getElementById('formUsuarioAdmin')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnGuardarUsuarioAdmin');
+    const nombre = document.getElementById('adminUserNombre').value;
+    const correo = document.getElementById('adminUserCorreo').value;
+    const contrasena = document.getElementById('adminUserPassword').value;
+    const rol = document.getElementById('adminUserRol').value;
+
+    const payload = { nombre, correo, rol };
+    if (contrasena) payload.contrasena = contrasena;
+
+    alternarBotonCarga(btn, true, 'Guardando...');
+
+    const esEdicion = !!estado.usuarioAdminEditandoId;
+    const url = esEdicion ? `/api/usuarios/${estado.usuarioAdminEditandoId}` : '/api/usuarios';
+    const method = esEdicion ? 'PUT' : 'POST';
+
+    try {
+      const resp = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.mensaje || 'Error al guardar usuario');
+
+      Swal.fire('Éxito', esEdicion ? 'Usuario actualizado correctamente.' : 'Usuario creado correctamente.', 'success');
+      document.getElementById('btnCancelarEdicionUsuarioAdmin')?.click();
+      cargarUsuariosAdmin();
+    } catch (err) {
+      Swal.fire('Error', err.message, 'error');
+    } finally {
+      alternarBotonCarga(btn, false);
+    }
+  });
 
   window.borrarMascotaAdmin = async (id) => {
     const confirm = await Swal.fire({ title: '¿Borrar esta mascota?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, borrar', cancelButtonText: 'Cancelar' });
@@ -842,6 +1269,35 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (e) { Swal.fire('Error', e.message, 'error'); }
     }
   };
+
+  document.getElementById('formMiPerfil')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btnGuardarPerfil');
+    const nombre = document.getElementById('perfilNombre').value;
+    const correo = document.getElementById('perfilCorreo').value;
+    const contrasena = document.getElementById('perfilContrasena').value;
+
+    alternarBotonCarga(btn, true, 'Guardando...');
+    try {
+      const resp = await fetch('/api/auth/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ nombre, correo, contrasena })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.mensaje || 'Error al actualizar perfil');
+
+      estado.usuario = data.usuario; // Update global state
+      verificarSesion(); // Update navbar name
+      Swal.fire({ title: 'Perfil Actualizado', icon: 'success', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+      document.getElementById('perfilContrasena').value = '';
+    } catch (e) {
+      Swal.fire('Error', e.message, 'error');
+    } finally {
+      alternarBotonCarga(btn, false);
+    }
+  });
 
   DOM.formLogin?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1122,13 +1578,57 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   window.abrirPerfilPublico = (mEncoded) => {
-    const m = JSON.parse(mEncoded);
+    const m = typeof mEncoded === 'string' ? JSON.parse(mEncoded) : mEncoded;
     document.getElementById('nombreMascotaPublico').textContent = m.nombre;
-    document.getElementById('descripcionMascotaPublico').innerHTML = escaparHtml(m.descripcion);
+    document.getElementById('descripcionMascotaPublico').innerHTML = escaparHtml(m.descripcion || 'Sin descripción');
     const foto = document.getElementById('fotoMascotaPublico');
     foto.src = m.foto_url || '';
     m.foto_url ? foto.classList.remove('d-none') : foto.classList.add('d-none');
-    document.getElementById('alertaMascotaPerdidaPublico').classList.toggle('d-none', !m.esta_perdida);
+    
+    const esPerdida = m.esta_perdida === true || m.esta_perdida === 'true';
+    document.getElementById('alertaMascotaPerdidaPublico').classList.toggle('d-none', !esPerdida);
+
+    const secContacto = document.getElementById('seccionContactoDuenoPublico');
+    const secMapa = document.getElementById('contenedorMapaPerfilPublico');
+
+    if (esPerdida) {
+      if (secContacto) {
+        secContacto.classList.remove('d-none');
+        const tel = m.telefono_dueno || 'No proporcionado';
+        const dir = m.direccion_dueno || 'Zona de búsqueda registrada';
+        const numLimpio = String(tel).replace(/\D/g, '');
+        const msgWA = encodeURIComponent(`Hola, vi el reporte de ${m.nombre} en PetMap y tengo información.`);
+
+        document.getElementById('telefonoDuenoPublico').textContent = tel;
+        document.getElementById('direccionDuenoPublico').textContent = dir;
+
+        const btnWA = document.getElementById('btnWhatsappDuenoPublico');
+        const btnLlamar = document.getElementById('btnLlamarDuenoPublico');
+
+        if (numLimpio) {
+          btnWA.href = `https://wa.me/52${numLimpio}?text=${msgWA}`;
+          btnWA.classList.remove('d-none');
+          btnLlamar.href = `tel:${numLimpio}`;
+          btnLlamar.classList.remove('d-none');
+        } else {
+          btnWA.classList.add('d-none');
+          btnLlamar.classList.add('d-none');
+        }
+      }
+
+      if (secMapa && m.latitud != null && m.longitud != null) {
+        secMapa.classList.remove('d-none');
+        setTimeout(() => {
+          window.petmapMapas?.mostrarMapaPerfilPublico?.(m.latitud, m.longitud);
+        }, 300);
+      } else if (secMapa) {
+        secMapa.classList.add('d-none');
+      }
+    } else {
+      secContacto?.classList.add('d-none');
+      secMapa?.classList.add('d-none');
+    }
+
     mostrarVista('perfil-publico');
   };
 

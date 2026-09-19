@@ -47,8 +47,9 @@ html, body {
 .invalid-feedback { font-size: 0.85rem; font-weight: 500; color: var(--rojo); margin-top: 0.4rem; padding-left: 0.3rem; animation: aparecer 0.2s ease-out; }
 .form-control:disabled { background-color: #f3f0ec; opacity: 0.8; }
 
-.btn-toggle-password { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 4px; color: var(--texto-suave); cursor: pointer; transition: color 0.2s; display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 50%; }
-.btn-toggle-password:hover, .btn-toggle-password:focus { color: var(--acento); outline: none; background: rgba(46, 74, 69, 0.05); }
+.btn-toggle-password { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; padding: 6px; color: var(--texto-suave); cursor: pointer; transition: color 0.2s, background-color 0.2s; display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 50%; line-height: 1; }
+.btn-toggle-password svg { display: block; width: 20px; height: 20px; }
+.btn-toggle-password:hover, .btn-toggle-password:focus { color: var(--acento); outline: none; background: rgba(46, 74, 69, 0.08); }
 
 .req-list { background: #fdfcfb; border: 1px solid var(--borde); border-radius: 0.8rem; padding: 1rem; margin-top: 0.5rem; }
 .req-item { font-size: 0.85rem; font-weight: 500; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; transition: color 0.2s; }
@@ -70,9 +71,13 @@ html, body {
 .alerta-formulario.exito { background: #f0fdf4; border-left-color: var(--verde); color: #166534; }
 
 @media print {
+  html, body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+  }
   body > :not(#zona-impresion) { display: none !important; }
-  #zona-impresion { display: block !important; width: 100%; margin: 0; padding: 0; }
-  /* Removido el @page global porque se inyecta por plantilla ahora */
+  #zona-impresion { display: block !important; width: 100%; margin: 0; padding: 0; background: #ffffff !important; background-color: #ffffff !important; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
 
