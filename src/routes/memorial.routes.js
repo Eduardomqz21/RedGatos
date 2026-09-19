@@ -1,6 +1,6 @@
 const { Router } = require('express');
 const { subidaFotoMascota } = require('../controllers/mascotas.controller');
-const { registrarMemorial, obtenerMemoriales, encenderVeladora, borrarMemorial } = require('../controllers/memorial.controller');
+const { registrarMemorial, obtenerMemoriales, encenderVeladora, borrarMemorial, actualizarMemorialAdmin } = require('../controllers/memorial.controller');
 const { verificarToken, verificarRolAdmin } = require('../middlewares/auth.middleware');
 const rateLimit = require('express-rate-limit');
 
@@ -16,7 +16,8 @@ rutasMemorial.get('/', obtenerMemoriales);
 rutasMemorial.post('/', subidaFotoMascota.single('foto'), registrarMemorial);
 rutasMemorial.post('/:id/veladora', limiteVeladoras, encenderVeladora);
 
-// CORRECCIÓN: Ruta de eliminación de Memorial añadida y protegida
+// RUTA DE EDICIÓN Y ELIMINACIÓN DE MEMORIAL (ADMIN)
+rutasMemorial.put('/:id', verificarToken, verificarRolAdmin, actualizarMemorialAdmin);
 rutasMemorial.delete('/:id', verificarToken, verificarRolAdmin, borrarMemorial);
 
 module.exports = rutasMemorial;

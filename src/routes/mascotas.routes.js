@@ -12,6 +12,7 @@ const {
   verificarAccesoMascota,
   cambiarEstadoMascota, 
   borrarMascota,
+  actualizarMascotaAdmin,
 } = require('../controllers/mascotas.controller');
 const { verificarToken, verificarRolAdmin } = require('../middlewares/auth.middleware');
 
@@ -33,6 +34,7 @@ rutas.get('/mis-mascotas', verificarToken, obtenerMisMascotas);
 
 // RUTA ADMIN GLOBAL PARA LAS TABLAS DE MASCOTAS (Debe estar antes de /:id)
 rutas.get('/admin/todas', verificarToken, verificarRolAdmin, obtenerTodasMascotasAdmin);
+rutas.put('/:id/datos', verificarToken, verificarRolAdmin, actualizarMascotaAdmin);
 
 rutas.get('/:id/publico', limitePublico, obtenerPerfilPublico);
 rutas.post('/:id/verificar', rateLimit({ windowMs: 15 * 60 * 1000, limit: 10 }), verificarAccesoMascota);

@@ -34,8 +34,29 @@ const limpiarArchivoTemporal = (ruta) => {
   });
 };
 
-const limpiarMascotaParaPerfil = ({ telefono_dueno, direccion_dueno, latitud, longitud, ubicacion, id_usuario, ...seguro }) => seguro;
-const limpiarMascotaParaMapa = ({ telefono_dueno, direccion_dueno, id_usuario, ...mapa }) => mapa;
+const limpiarMascotaParaPerfil = ({ ubicacion, id_usuario, ...seguro }) => {
+  if (!seguro.esta_perdida) {
+    delete seguro.telefono_dueno;
+    delete seguro.direccion_dueno;
+    delete seguro.latitud;
+    delete seguro.longitud;
+  } else {
+    seguro.telefono_dueno = descifrarDatos(seguro.telefono_dueno) || '';
+    seguro.direccion_dueno = descifrarDatos(seguro.direccion_dueno) || '';
+  }
+  return seguro;
+};
+const limpiarMascotaParaMapa = (m) => {
+  const { id_usuario, ubicacion, ...mapa } = m;
+  if (m.esta_perdida) {
+    mapa.telefono_dueno = descifrarDatos(m.telefono_dueno) || '';
+    mapa.direccion_dueno = descifrarDatos(m.direccion_dueno) || '';
+  } else {
+    delete mapa.telefono_dueno;
+    delete mapa.direccion_dueno;
+  }
+  return mapa;
+};
 
 const registrarMascota = async (req, res) => {
   try {
@@ -229,4 +250,26 @@ const borrarMascota = async (req, res) => {
   }
 };
 
-module.exports = { subidaFotoMascota, registrarMascota, obtenerTodasMascotasAdmin, obtenerMascotasPerdidas, obtenerMisMascotas, obtenerPerfilPublico, verificarAccesoMascota, cambiarEstadoMascota, borrarMascota };
+const actualizarMascotaAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, especie, raza, descripcion } = req.body;
+    
+    const result = await consultarBd(
+      `UPDATE mascotas SET 
+        nombre = COALESCE($1, nombre), 
+        especie = COALESCE($2, especie), 
+        raza = COALESCE($3, raza), 
+        descripcion = COALESCE($4, descripcion) 
+       WHERE id = $5 RETURNING *;`,
+      [nombre ? nombre.trim() : null, especie ? especie.trim() : null, raza ? raza.trim() : null, descripcion ? descripcion.trim() : null, id]
+    );
+
+    if (!result.rowCount) return res.status(404).json({ mensaje: 'Mascota no encontrada.' });
+    res.status(200).json({ mensaje: 'Mascota actualizada correctamente.', mascota: result.rows[0] });
+  } catch (error) {
+    res.status(500).json({ mensaje: 'Error al actualizar la mascota.' });
+  }
+};
+
+module.exports = { subidaFotoMascota, registrarMascota, obtenerTodasMascotasAdmin, obtenerMascotasPerdidas, obtenerMisMascotas, obtenerPerfilPublico, verificarAccesoMascota, cambiarEstadoMascota, borrarMascota, actualizarMascotaAdmin };

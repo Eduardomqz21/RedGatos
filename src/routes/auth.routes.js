@@ -6,7 +6,8 @@ const {
   obtenerSesionActual,
   cerrarSesion, 
   solicitarRecuperacion, 
-  restablecerContrasena 
+  restablecerContrasena,
+  actualizarMiPerfil
 } = require('../controllers/auth.controller');
 const { verificarToken } = require('../middlewares/auth.middleware');
 
@@ -30,5 +31,6 @@ rutasAuth.post('/logout', cerrarSesion);
 rutasAuth.get('/me', verificarToken, obtenerSesionActual);
 rutasAuth.post('/recuperar', limiteRecuperacion, solicitarRecuperacion);
 rutasAuth.post('/resetear', limiteRecuperacion, restablecerContrasena);
+rutasAuth.put('/me', verificarToken, actualizarMiPerfil);
 
 module.exports = rutasAuth;
