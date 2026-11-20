@@ -4,7 +4,7 @@ const sharp = require('sharp');
 const fs = require('fs');
 const crypto = require('crypto');
 const { consultarBd } = require('../config/bd.config');
-const { BASE_UPLOAD_DIR, borrarArchivoFisico } = require('../utils/archivos.util');
+const { UPLOAD_DIR_MEMORIAL, asegurarDirectorioMemorial, borrarArchivoFisico } = require('../utils/archivos.util');
 
 const limpiarArchivoTemporal = (ruta) => {
   if (!ruta) return;
@@ -21,8 +21,7 @@ const registrarMemorial = async (req, res) => {
       return res.status(400).json({ mensaje: 'Datos y foto obligatorios.' });
     }
 
-    const dirMemorial = path.join(BASE_UPLOAD_DIR, 'memorial');
-    if (!fs.existsSync(dirMemorial)) fs.mkdirSync(dirMemorial, { recursive: true });
+    const dirMemorial = asegurarDirectorioMemorial();
 
     const nombreArchivo = `${crypto.randomUUID()}.webp`;
     await sharp(req.file.path).resize(600, 600, { fit: 'cover' }).webp({ quality: 80 }).toFile(path.join(dirMemorial, nombreArchivo));

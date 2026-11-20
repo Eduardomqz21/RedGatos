@@ -637,6 +637,29 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('perfilContrasena').value = '';
     }
     if (vista === 'memorial') cargarMemoriales();
+    if (vista === 'registro-exitoso' && estado.mascotaActual) {
+      const m = estado.mascotaActual;
+      const elNombre = document.getElementById('nombreMascotaRegistroExitoso');
+      if (elNombre) elNombre.textContent = m.nombre || 'Mascota';
+      const elFoto = document.getElementById('fotoMascotaRegistroExitoso');
+      if (elFoto) {
+        if (m.foto_url) {
+          elFoto.src = m.foto_url;
+          elFoto.classList.remove('d-none');
+        } else {
+          elFoto.src = '';
+          elFoto.classList.add('d-none');
+        }
+      }
+      const elQr = document.getElementById('qrMascotaRegistroExitoso');
+      if (elQr && m.qr_perfil) {
+        elQr.src = m.qr_perfil;
+      }
+      const inputUrl = document.getElementById('urlMascotaRegistroExitoso');
+      if (inputUrl && m.url_perfil) {
+        inputUrl.value = m.url_perfil;
+      }
+    }
   };
 
   DOM.botonesVista.forEach(boton => {
@@ -1379,6 +1402,18 @@ document.addEventListener('DOMContentLoaded', () => {
       tieneError = true;
     }
 
+    const chkTerminos = document.getElementById('registroAceptoTerminos');
+    if (chkTerminos && !chkTerminos.checked) {
+      chkTerminos.classList.add('is-invalid');
+      const msg = document.getElementById('msgTerminosError');
+      if (msg) msg.classList.add('d-block');
+      tieneError = true;
+    } else if (chkTerminos) {
+      chkTerminos.classList.remove('is-invalid');
+      const msg = document.getElementById('msgTerminosError');
+      if (msg) msg.classList.remove('d-block');
+    }
+
     if (tieneError) return;
 
     const btn = document.getElementById('btnSubmitRegistroUsuario');
@@ -1493,15 +1528,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
     procesarPeticion('/api/mascotas', { method: 'POST', body: formData }, (d) => {
       DOM.formMascota.reset(); sincronizarMapaRegistro();
-      estado.mascotaActual = { ...d.mascota, qr_perfil: d.qr_perfil, url_perfil: d.url_perfil, foto_url: d.foto_url || d.mascota.foto_url }; 
+      const fotoUrlFinal = d.foto_url || d.mascota?.foto_url || '';
+      estado.mascotaActual = { ...d.mascota, qr_perfil: d.qr_perfil, url_perfil: d.url_perfil, foto_url: fotoUrlFinal }; 
       
-      document.getElementById('fotoMascotaRegistroExitoso').src = estado.mascotaActual.foto_url || '';
-      document.getElementById('qrMascotaRegistroExitoso').src = d.qr_perfil;
-      document.getElementById('btnDescargarQRMascotaRegistroExitoso').onclick = () => descargarUrl(d.qr_perfil, 'qr.png');
+      const elFoto = document.getElementById('fotoMascotaRegistroExitoso');
+      if (elFoto) {
+        if (fotoUrlFinal) {
+          elFoto.src = fotoUrlFinal;
+          elFoto.classList.remove('d-none');
+        } else {
+          elFoto.src = '';
+          elFoto.classList.add('d-none');
+        }
+      }
+
+      const elNombre = document.getElementById('nombreMascotaRegistroExitoso');
+      if (elNombre) {
+        elNombre.textContent = estado.mascotaActual.nombre || 'Mascota';
+      }
       
-      document.getElementById('btnIrPerfilMascotaRegistroExitoso').onclick = () => {
-        window.petmapUI.abrirPrivado(encodeURIComponent(JSON.stringify(estado.mascotaActual)));
-      };
+      const elQr = document.getElementById('qrMascotaRegistroExitoso');
+      if (elQr && d.qr_perfil) {
+        elQr.src = d.qr_perfil;
+      }
+
+      const inputUrl = document.getElementById('urlMascotaRegistroExitoso');
+      if (inputUrl) {
+        inputUrl.value = d.url_perfil || '';
+      }
+
+      const btnCopiar = document.getElementById('btnCopiarLinkMascotaRegistroExitoso');
+      if (btnCopiar) {
+        btnCopiar.onclick = () => {
+          const valor = inputUrl ? inputUrl.value : (d.url_perfil || '');
+          if (valor) {
+            navigator.clipboard.writeText(valor).then(() => {
+              const msg = document.getElementById('msgCopiadoRegistroExitoso');
+              if (msg) {
+                msg.classList.remove('d-none');
+                setTimeout(() => msg.classList.add('d-none'), 3000);
+              }
+            }).catch(() => {
+              if (inputUrl) {
+                inputUrl.select();
+                document.execCommand('copy');
+              }
+            });
+          }
+        };
+      }
+      
+      const btnDescargar = document.getElementById('btnDescargarQRMascotaRegistroExitoso');
+      if (btnDescargar && d.qr_perfil) {
+        btnDescargar.onclick = () => descargarUrl(d.qr_perfil, 'qr.png');
+      }
+
+      const btnImprimir = document.getElementById('btnImprimirQRMascotaRegistroExitoso');
+      if (btnImprimir && d.qr_perfil) {
+        btnImprimir.onclick = () => {
+          estado.qrImpresionActual = d.qr_perfil;
+          new bootstrap.Modal(document.getElementById('modalImprimirQR')).show();
+        };
+      }
+      
+      const btnIrPerfil = document.getElementById('btnIrPerfilMascotaRegistroExitoso');
+      if (btnIrPerfil) {
+        btnIrPerfil.onclick = () => {
+          window.petmapUI.abrirPrivado(encodeURIComponent(JSON.stringify(estado.mascotaActual)));
+        };
+      }
       
       mostrarVista('registro-exitoso');
     });
@@ -1633,6 +1728,29 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   DOM.chkEstaPerdida?.addEventListener('change', sincronizarMapaRegistro);
+
+  // GESTIÓN DE CONSENTIMIENTO DE COOKIES Y POLÍTICAS LEGALES
+  document.getElementById('registroAceptoTerminos')?.addEventListener('change', (e) => {
+    if (e.target.checked) {
+      e.target.classList.remove('is-invalid');
+      document.getElementById('msgTerminosError')?.classList.remove('d-block');
+    }
+  });
+
+  const bannerCookies = document.getElementById('bannerCookies');
+  const btnAceptarCookies = document.getElementById('btnAceptarCookies');
+  if (bannerCookies && !localStorage.getItem('petmap_cookie_consent')) {
+    setTimeout(() => {
+      bannerCookies.classList.remove('d-none');
+    }, 800);
+  }
+  btnAceptarCookies?.addEventListener('click', () => {
+    localStorage.setItem('petmap_cookie_consent', 'true');
+    bannerCookies?.classList.add('d-none');
+  });
+
+  const spanYear = document.getElementById('currentYear');
+  if (spanYear) spanYear.textContent = new Date().getFullYear();
   
   verificarSesion().then(() => {
     if (perfilInicial) {

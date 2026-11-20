@@ -14,7 +14,7 @@ const rutasMascotas = require('./src/routes/mascotas.routes');
 const rutasAuth = require('./src/routes/auth.routes');
 const rutasUsuarios = require('./src/routes/usuarios.routes');
 const rutasMemorial = require('./src/routes/memorial.routes'); 
-const { BASE_UPLOAD_DIR } = require('./src/utils/archivos.util');
+const { UPLOAD_DIR_MASCOTAS, UPLOAD_DIR_MEMORIAL, BASE_UPLOAD_DIR } = require('./src/utils/archivos.util');
 
 const aplicacion = express();
 const puertoServidor = Number(process.env.PORT || 3000);
@@ -30,7 +30,7 @@ aplicacion.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdn.jsdelivr.net", "https://unpkg.com", "data:"],
       imgSrc: ["'self'", "data:", "https:", "blob:"],
       connectSrc: ["'self'", "https:"],
       workerSrc: ["'self'", "blob:"],
@@ -83,8 +83,24 @@ aplicacion.use(express.static(path.join(__dirname, 'public'), {
 // ¡¡NUEVA LÍNEA!! PARA SERVIR LA CARPETA TEMPLATES QUE ESTÁ AFUERA DE PUBLIC
 aplicacion.use('/templates', express.static(path.join(__dirname, 'templates')));
 
-// Servir uploads estáticamente pero restringiendo ejecución
-aplicacion.use('/uploads', express.static(path.resolve(BASE_UPLOAD_DIR), {
+// Servir uploads de Memorial (Altar) desde su disco dedicado
+aplicacion.use('/uploads/memorial', express.static(path.resolve(UPLOAD_DIR_MEMORIAL), {
+  setHeaders: (res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', 'inline');
+  }
+}));
+
+// Servir uploads de Mascotas desde su disco dedicado (ruta con prefijo explícito /uploads/mascotas)
+aplicacion.use('/uploads/mascotas', express.static(path.resolve(UPLOAD_DIR_MASCOTAS), {
+  setHeaders: (res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', 'inline');
+  }
+}));
+
+// Servir uploads de Mascotas desde la ruta general (/uploads/<letra>/...)
+aplicacion.use('/uploads', express.static(path.resolve(UPLOAD_DIR_MASCOTAS), {
   setHeaders: (res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Disposition', 'inline');

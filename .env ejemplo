@@ -26,8 +26,16 @@ ADMIN_EMAIL=admin@petmap.com
 ADMIN_PASSWORD=ContrasenaSegura!123
 
 # ==========================================
-# SISTEMA DE ARCHIVOS
+# SISTEMA DE ARCHIVOS (DISCOS INDEPENDIENTES)
 # ==========================================
-UPLOAD_DIR=D:\PetMap\uploads
-# Llave de cifrado AES-256 (Generada para producción)
+# Disco para fotos de mascotas (Disco 1 - ej. /mnt/disco_1tb/redgatos_uploads/mascotas)
+UPLOAD_DIR_MASCOTAS=/mnt/disco_1tb/redgatos_uploads/mascotas
+
+# Disco para fotos del altar / memorial (Disco 2 - ej. /mnt/disco_500gb_1/redgatos_uploads/altar)
+UPLOAD_DIR_MEMORIAL=/mnt/disco_500gb_1/redgatos_uploads/altar
+
+# Directorio de fallback general
+UPLOAD_DIR=./uploads
+
+# Llave de cifrado AES-256 (Generada para producción - 64 caracteres hex)
 ENCRYPTION_KEY=

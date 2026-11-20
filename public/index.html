@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
   <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
   <link href="estilos.css?v=3" rel="stylesheet" />
+  <script src="iconos.js?v=2"></script>
   <style>
     /* Estilos extra para la selección de plantillas */
     .card-plantilla-hover:hover { border-color: var(--acento) !important; transform: translateY(-3px); box-shadow: 0 5px 15px rgba(46,74,69,0.1); background-color: #f7fffd; }
@@ -154,6 +155,18 @@
                 <input class="form-check-input fs-4" type="checkbox" role="switch" id="esta_perdida" name="esta_perdida" />
                 <label class="form-check-label fw-bold mt-1 ms-2" for="esta_perdida">¿Esta mascota está perdida?</label>
               </div>
+
+              <!-- NOTA LEGAL Y PRIVACIDAD EN REGISTRO DE MASCOTA -->
+              <div class="p-3 mb-4 rounded-3" style="background: rgba(46, 74, 69, 0.05); border: 1px solid var(--borde);">
+                <div class="d-flex gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="text-success flex-shrink-0 mt-1" viewBox="0 0 16 16"><path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/><path d="M8 0c-.69 0-1.843.265-2.928.56-1.11.3-2.229.655-2.887.87a1.54 1.54 0 0 0-1.044 1.262c-.596 4.477.787 7.795 2.464 9.99 1.579 2.065 3.444 3.097 4.19 3.292a1 1 0 0 0 .41 0c.746-.195 2.611-1.227 4.19-3.292 1.677-2.195 3.06-5.513 2.464-9.99a1.54 1.54 0 0 0-1.044-1.263 63 63 0 0 0-2.887-.87C9.843.266 8.69 0 8 0m0 1.272c.599 0 1.664.243 2.743.541l.247.068c.957.265 1.96.544 2.404.689.436 3.64-.54 6.34-1.9 8.12-1.357 1.774-2.927 2.65-3.494 2.894-.567-.244-2.137-1.12-3.494-2.894-1.36-1.78-2.336-4.48-1.9-8.12.444-.145 1.447-.424 2.404-.69l.247-.067c1.079-.298 2.144-.54 2.743-.54"/></svg>
+                  <div class="small text-muted">
+                    <strong class="text-dark">Privacidad y Protección de Datos:</strong>
+                    Tus datos de contacto (teléfono y dirección) se guardan con cifrado de grado militar (AES-256). Solo se mostrarán públicamente si marcas a la mascota como perdida para facilitar su rescate. Consulta el <a href="#" class="text-decoration-underline text-dark fw-semibold" data-bs-toggle="modal" data-bs-target="#modalAvisoPrivacidad">Aviso de Privacidad</a> y <a href="#" class="text-decoration-underline text-dark fw-semibold" data-bs-toggle="modal" data-bs-target="#modalDescargoLegal">Descargo Legal</a>.
+                  </div>
+                </div>
+              </div>
+
               <button type="submit" class="btn boton-acento w-100 py-3 fs-5" id="btnSubmitMascota">Guardar Mascota</button>
             </form>
           </div>
@@ -275,6 +288,15 @@
                     </button>
                   </div>
                   <div id="msgConfirmacion" class="invalid-feedback d-block mt-1"></div>
+                </div>
+
+                <!-- ACEPTACIÓN DE TÉRMINOS Y AVISO DE PRIVACIDAD -->
+                <div class="form-check mb-3">
+                  <input class="form-check-input" type="checkbox" id="registroAceptoTerminos" required />
+                  <label class="form-check-label small text-muted" for="registroAceptoTerminos">
+                    He leído y acepto los <a href="#" class="text-decoration-underline fw-semibold text-dark" data-bs-toggle="modal" data-bs-target="#modalTerminosCondiciones">Términos y Condiciones</a> y el <a href="#" class="text-decoration-underline fw-semibold text-dark" data-bs-toggle="modal" data-bs-target="#modalAvisoPrivacidad">Aviso de Privacidad</a> de PetMap.
+                  </label>
+                  <div id="msgTerminosError" class="invalid-feedback">Debes aceptar los términos y el aviso de privacidad para continuar.</div>
                 </div>
 
                 <button type="submit" class="btn boton-acento w-100 py-3 mt-2" id="btnSubmitRegistroUsuario">Registrarme</button>
@@ -637,6 +659,14 @@
             <img id="fotoMascotaRegistroExitoso" class="img-fluid rounded-4 mb-3 d-none mx-auto" alt="Foto de la mascota registrada" style="max-width: 320px;" />
             <h3 id="nombreMascotaRegistroExitoso" class="h3 fw-bold mb-3">Nombre</h3>
             <img id="qrMascotaRegistroExitoso" class="qr-perfil-img img-fluid mx-auto" alt="Código QR del perfil de la mascota" />
+            <div class="mt-3 mb-2" id="contenedorUrlMascotaRegistroExitoso">
+              <label class="form-label small text-muted mb-1">Enlace público de la mascota:</label>
+              <div class="input-group justify-content-center mx-auto" style="max-width: 440px;">
+                <input type="text" id="urlMascotaRegistroExitoso" class="form-control text-center small bg-light" readonly value="" />
+                <button type="button" id="btnCopiarLinkMascotaRegistroExitoso" class="btn btn-outline-secondary btn-sm px-3">Copiar</button>
+              </div>
+              <div id="msgCopiadoRegistroExitoso" class="small text-success mt-1 d-none">¡Enlace copiado al portapapeles!</div>
+            </div>
             <div class="d-flex flex-column flex-sm-row gap-2 justify-content-center mt-3">
               <button type="button" id="btnImprimirQRMascotaRegistroExitoso" class="btn boton-fino px-4 py-3">Imprimir QR</button>
               <button type="button" id="btnDescargarQRMascotaRegistroExitoso" class="btn btn-outline-primary px-4 py-3">Guardar QR</button>
@@ -861,6 +891,12 @@
                 <label class="form-label text-light small fw-bold mb-1">Fotografía para el recuerdo</label>
                 <input type="file" name="foto" class="form-control bg-dark text-white border-secondary" accept="image/*" required>
               </div>
+              <div class="form-check text-start">
+                <input class="form-check-input bg-dark border-secondary" type="checkbox" id="memAceptoTerminos" required checked>
+                <label class="form-check-label small text-light opacity-75" for="memAceptoTerminos">
+                  Declaro que la fotografía y dedicatoria son de mi autoría o cuento con autorización para su publicación conmemorativa en el Altar comunitario, aceptando los <a href="#" class="text-light text-decoration-underline" data-bs-toggle="modal" data-bs-target="#modalTerminosCondiciones">Términos de Servicio</a>.
+                </label>
+              </div>
               <button type="submit" id="btnSubmitMemorial" class="btn btn-light mt-3 py-2 fw-bold w-100">Guardar Homenaje</button>
             </form>
           </div>
@@ -869,6 +905,71 @@
     </div>
 
   </main>
+
+  <!-- FOOTER PRINCIPAL -->
+  <footer class="mt-5 border-top py-5" style="background: rgba(255, 255, 255, 0.75); backdrop-filter: blur(10px); border-color: var(--borde) !important;">
+    <div class="container-fluid px-3 px-lg-5">
+      <div class="row g-4 justify-content-between">
+        <div class="col-12 col-md-4">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--acento);">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+            <span class="fs-4 fw-bold" style="color: var(--acento);">PetMap</span>
+          </div>
+          <p class="text-muted small mb-3" style="max-width: 360px;">
+            Red solidaria comunitaria para la búsqueda y rescate de mascotas extraviadas y el recuerdo de quienes ya partieron. Desarrollada con estándares de privacidad y seguridad criptográfica.
+          </p>
+          <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 small d-inline-flex align-items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 0c-.69 0-1.843.265-2.928.56-1.11.3-2.229.655-2.887.87a1.54 1.54 0 0 0-1.044 1.262c-.596 4.477.787 7.795 2.464 9.99 1.579 2.065 3.444 3.097 4.19 3.292a1 1 0 0 0 .41 0c.746-.195 2.611-1.227 4.19-3.292 1.677-2.195 3.06-5.513 2.464-9.99a1.54 1.54 0 0 0-1.044-1.263 63 63 0 0 0-2.887-.87C9.843.266 8.69 0 8 0m0 5a1.5 1.5 0 0 1 .5 2.915l.385 1.99a.5.5 0 0 1-.491.595h-.788a.5.5 0 0 1-.49-.595l.384-1.99A1.5 1.5 0 0 1 8 5"/></svg> Cifrado AES-256
+            </span>
+            <span class="badge bg-secondary-subtle text-secondary border rounded-pill px-3 py-2 small">
+              Iniciativa Comunitaria
+            </span>
+          </div>
+          <div>
+            <a href="https://petmap.lalolab.dev" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border text-decoration-none px-3 py-2 small d-inline-flex align-items-center gap-1 shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="currentColor" viewBox="0 0 16 16"><path d="M4.715 6.542 3.343 7.914a3 3 0 1 0 4.243 4.243l1.828-1.829A3 3 0 0 0 8.586 5.5L8 6.086a1 1 0 0 0-.154.199 2 2 0 0 1 .861 3.337L6.88 11.45a2 2 0 1 1-2.83-2.83l.793-.792a4 4 0 0 1-.128-1.287z"/><path d="M6.586 1L7.24 1.654C7.8 2.215 8.2 2.9 8.396 3.633L9.08 3.513c-.15-1.077-.736-2.073-1.58-2.846zm3.828 2.458a4 4 0 0 1 .128 1.287l-.793.792a2 2 0 1 1-2.83 2.83l-.793-.792a4 4 0 0 1 .128-1.287l.793-.792a2 2 0 1 1 2.83-2.83z"/></svg>
+              https://petmap.lalolab.dev
+            </a>
+          </div>
+        </div>
+
+        <div class="col-6 col-md-2">
+          <h6 class="fw-bold mb-3 text-dark">Navegación</h6>
+          <ul class="list-unstyled small d-flex flex-column gap-2 mb-0">
+            <li><button type="button" class="btn btn-link text-decoration-none text-muted p-0 small" data-vista="inicio">Inicio</button></li>
+            <li><button type="button" class="btn btn-link text-decoration-none text-muted p-0 small" data-vista="registro">Registrar Mascota</button></li>
+            <li><button type="button" class="btn btn-link text-decoration-none text-muted p-0 small" data-vista="busqueda">Mapa de Alertas</button></li>
+            <li><button type="button" class="btn btn-link text-decoration-none text-muted p-0 small" data-vista="memorial">Altar y Memorial</button></li>
+            <li><button type="button" class="btn btn-link text-decoration-none text-muted p-0 small" data-vista="mis-mascotas">Credenciales ID</button></li>
+          </ul>
+        </div>
+
+        <div class="col-6 col-md-3">
+          <h6 class="fw-bold mb-3 text-dark">Legal y Privacidad</h6>
+          <ul class="list-unstyled small d-flex flex-column gap-2 mb-0">
+            <li><a href="#" class="text-decoration-none text-muted" data-bs-toggle="modal" data-bs-target="#modalAvisoPrivacidad"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M10 7v1.071c.54.14 1 .632 1 1.229v2c0 .667-.533 1-1 1H6c-.467 0-1-.333-1-1v-2c0-.597.46-1.09 1-1.229V7a2 2 0 1 1 4 0m-2-.75a.75.75 0 0 0-.75.75v1h1.5V7a.75.75 0 0 0-.75-.75"/><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5z"/></svg> Aviso de Privacidad</a></li>
+            <li><a href="#" class="text-decoration-none text-muted" data-bs-toggle="modal" data-bs-target="#modalTerminosCondiciones"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M5 10.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/><path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2"/><path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1z"/></svg> Términos de Servicio</a></li>
+            <li><a href="#" class="text-decoration-none text-muted" data-bs-toggle="modal" data-bs-target="#modalDescargoLegal"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.134a.1.1 0 0 0 .101 0q.114-.049.293-.134c.241-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.464 9.99-1.579 2.065-3.444 3.097-4.19 3.292a1 1 0 0 1-.41 0c-.746-.195-2.611-1.227-4.19-3.292-1.677-2.195-3.06-5.513-2.464-9.99A1.54 1.54 0 0 1 1.83 2.693c.658-.215 1.777-.57 2.887-.87z"/><path d="M7.001 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.553.553 0 0 1-1.1 0z"/></svg> Descargo de Responsabilidad</a></li>
+            <li><a href="#" class="text-decoration-none text-muted" data-bs-toggle="modal" data-bs-target="#modalCookies"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="me-1" viewBox="0 0 16 16"><path d="M6 7.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m4.5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2m-.5 3.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/><path d="M8 0a7.96 7.96 0 0 0-4.075 1.114q-.245.102-.437.28A8 8 0 1 0 8 0m3.25 4c.11 0 .162-.087.124-.164A4 4 0 0 0 9.49 1.488a.2.2 0 0 1-.09-.23c.044-.132.18-.198.31-.148A5 5 0 0 1 12 3.5c0 .276-.224.5-.5.5zm1.5 3a.5.5 0 0 1 .5-.5 3 3 0 0 0 2.215-1.026.195.195 0 0 1 .28-.024c.097.086.106.23.023.328A4 4 0 0 1 13 7.5a.5.5 0 0 1-.5-.5"/></svg> Política de Cookies</a></li>
+          </ul>
+        </div>
+
+        <div class="col-12 col-md-3">
+          <h6 class="fw-bold mb-3 text-dark">Protección de Datos</h6>
+          <p class="text-muted small mb-2">
+            La información sensible de contacto se mantiene estrictamente cifrada y no se comercializa con terceros bajo ninguna circunstancia.
+          </p>
+          <p class="text-muted small mb-0">
+            © <span id="currentYear">2026</span> PetMap / RedGatos. Todos los derechos reservados.
+          </p>
+        </div>
+      </div>
+    </div>
+  </footer>
 
   <!-- MODAL: SELECCIONAR PLANTILLA DE CREDENCIAL -->
   <div class="modal fade" id="modalSeleccionarCredencial" tabindex="-1" aria-hidden="true">
@@ -934,14 +1035,235 @@
 
   <div id="zona-impresion" class="d-none"></div>
 
+  <!-- BANNER FLOTANTE DE COOKIES Y PRIVACIDAD -->
+  <div id="bannerCookies" class="position-fixed bottom-0 start-0 end-0 p-3 d-none" style="z-index: 1080;">
+    <div class="container" style="max-width: 820px;">
+      <div class="tarjeta-suave p-3 p-md-4 shadow-lg border-2 d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3" style="background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(14px); border-color: var(--borde);">
+        <div class="d-flex align-items-start gap-3">
+          <div class="fs-2">🍪</div>
+          <div>
+            <div class="fw-bold text-dark mb-1">Aviso de Privacidad y Cookies</div>
+            <div class="small text-muted">
+              Utilizamos cookies técnicas y almacenamiento local exclusivamente para mantener segura tu sesión y facilitar alertas comunitarias sin fines comerciales. Tus datos sensibles se almacenan con cifrado AES-256. Consulta nuestro <a href="#" class="text-decoration-underline fw-semibold text-dark" data-bs-toggle="modal" data-bs-target="#modalAvisoPrivacidad">Aviso de Privacidad</a> y los <a href="#" class="text-decoration-underline fw-semibold text-dark" data-bs-toggle="modal" data-bs-target="#modalTerminosCondiciones">Términos de Servicio</a>.
+            </div>
+          </div>
+        </div>
+        <div class="d-flex gap-2 flex-shrink-0 align-self-end align-self-md-center">
+          <button type="button" id="btnAceptarCookies" class="btn boton-acento btn-sm px-4 py-2">
+            Entendido y Aceptar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AVISO DE PRIVACIDAD INTEGRAL -->
+  <div class="modal fade" id="modalAvisoPrivacidad" tabindex="-1" aria-labelledby="tituloAvisoPrivacidad" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+      <div class="modal-content tarjeta-suave border-0">
+        <div class="modal-header border-bottom pb-3">
+          <div class="d-flex align-items-center gap-2">
+            <div class="p-2 rounded-circle bg-success bg-opacity-10 text-success">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 0c-.69 0-1.843.265-2.928.56-1.11.3-2.229.655-2.887.87a1.54 1.54 0 0 0-1.044 1.262c-.596 4.477.787 7.795 2.464 9.99 1.579 2.065 3.444 3.097 4.19 3.292a1 1 0 0 0 .41 0c.746-.195 2.611-1.227 4.19-3.292 1.677-2.195 3.06-5.513 2.464-9.99a1.54 1.54 0 0 0-1.044-1.263 63 63 0 0 0-2.887-.87C9.843.266 8.69 0 8 0m0 5a1.5 1.5 0 0 1 .5 2.915l.385 1.99a.5.5 0 0 1-.491.595h-.788a.5.5 0 0 1-.49-.595l.384-1.99A1.5 1.5 0 0 1 8 5"/></svg>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold text-dark mb-0" id="tituloAvisoPrivacidad">Aviso de Privacidad Integral</h5>
+              <div class="text-muted small">Protección de Datos Personales (LFPDPPP y Estándares RGPD)</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar modal"></button>
+        </div>
+        <div class="modal-body p-4 text-start small text-secondary" style="line-height: 1.7;">
+          <div class="alert alert-light border small text-dark mb-4 p-3 rounded-3">
+            <strong>Compromiso Institucional:</strong> PetMap / RedGatos es una plataforma comunitaria y solidaria de código abierto sin fines de lucro. Nos comprometemos a resguardar la privacidad, dignidad y seguridad de nuestros usuarios y sus animales de compañía mediante cifrado de grado militar y estricto apego legal.
+          </div>
+
+          <h6 class="fw-bold text-dark">1. Identidad y Domicilio del Responsable</h6>
+          <p>La plataforma comunitaria <strong>PetMap / RedGatos</strong>, accesible a través de su portal web, actúa como responsable del tratamiento y salvaguarda de los datos personales proporcionados por los usuarios en estricto cumplimiento con la normativa aplicable en materia de protección de datos personales.</p>
+
+          <h6 class="fw-bold text-dark">2. Datos Personales Recabados</h6>
+          <p>Para la prestación de los servicios comunitarios de la plataforma, recabamos las siguientes categorías de datos personales:</p>
+          <ul>
+            <li><strong>Datos de Identificación y Cuenta:</strong> Nombre completo, correo electrónico y contraseña (esta última procesada irreversiblemente mediante algoritmos de hashing seguro unilateral <em>bcrypt</em> con salt dinámico).</li>
+            <li><strong>Datos de la Mascota:</strong> Nombre, especie, raza, fecha de nacimiento o edad aproximada, señas particulares, descripción y fotografías proporcionadas voluntariamente.</li>
+            <li><strong>Datos de Localización y Contacto del Propietario (Tratamiento Protegido):</strong> Número de teléfono de contacto, dirección, colonia o referencias domiciliarias y coordenadas de geolocalización (latitud y longitud).</li>
+            <li><strong>Datos del Memorial / Altar:</strong> Fotografía conmemorativa, fechas de nacimiento/fallecimiento y mensaje de homenaje póstumo.</li>
+          </ul>
+
+          <h6 class="fw-bold text-dark">3. Medidas de Seguridad Criptográfica y Cifrado (AES-256)</h6>
+          <p>Garantizamos que los datos de contacto sensibles (número de teléfono y dirección domiciliaria del propietario) son cifrados en la base de datos mediante el algoritmo criptográfico simétrico <strong>AES-256-CBC</strong> antes de ser almacenados físicamente.</p>
+          <div class="p-3 bg-light rounded-3 mb-3 border">
+            <strong class="text-dark">Principio de Divulgación Condicionada:</strong>
+            Mientras una mascota esté registrada sin reporte de extravío, sus datos de contacto y domicilio permanecen totalmente ocultos e inaccesibles en los perfiles públicos y en las respuestas de la API. Dichos datos únicamente se descifran y muestran cuando el legítimo usuario activa conscientemente el estado de <em>"¿Esta mascota está perdida?"</em>, a fin de posibilitar que quien encuentre a la mascota pueda comunicarse de inmediato con su familia.
+          </div>
+
+          <h6 class="fw-bold text-dark">4. Almacenamiento Físico en Discos Dedicados e Independientes</h6>
+          <p>En cumplimiento con las mejores prácticas de seguridad de la información y aislamiento de cargas de trabajo:</p>
+          <ul>
+            <li>Las fotografías de mascotas se almacenan en un volumen de almacenamiento dedicado independiente.</li>
+            <li>Las fotografías del Altar y Memorial conmemorativo se almacenan en un disco físico separado.</li>
+            <li>Todas las imágenes son procesadas mediante compresión y sanitización de formato WebP, asignándoles identificadores únicos universales (UUID v4) que evitan la sobreescritura, la indexación descontrolada y la ejecución no autorizada de código en el servidor.</li>
+          </ul>
+
+          <h6 class="fw-bold text-dark">5. Finalidades del Tratamiento</h6>
+          <p><strong>Finalidades Primarias Necesarias:</strong></p>
+          <ol>
+            <li>Gestión y autenticación de la cuenta del usuario.</li>
+            <li>Creación y administración de los expedientes digitales de mascotas.</li>
+            <li>Generación de códigos QR únicos y credenciales digitales imprimibles para identificación física.</li>
+            <li>Visualización en el Mapa de Alertas y generación de carteles de búsqueda cuando se reporte un extravío.</li>
+            <li>Publicación conmemorativa en el Altar y gestión de veladoras comunitarias.</li>
+          </ol>
+          <p><strong>Ausencia de Finalidades Comerciales:</strong> PetMap declara expresamente que <strong>NO comercializa, arrienda, cede, perfila ni comparte datos personales</strong> con terceros, corredores de datos (data brokers), redes de publicidad comercial ni agencias de mercadotecnia.</p>
+
+          <h6 class="fw-bold text-dark">6. Ejercicio de los Derechos ARCO (Acceso, Rectificación, Cancelación y Oposición)</h6>
+          <p>Usted tiene derecho a conocer qué datos personales tenemos de usted, para qué los utilizamos y las condiciones de su tratamiento (Acceso). Asimismo, es su derecho solicitar la corrección de su información (Rectificación), que la eliminemos de nuestras bases de datos físicas y digitales cuando considere que no está siendo utilizada adecuadamente (Cancelación), u oponerse al uso de sus datos para fines específicos (Oposición).</p>
+          <p>Puede ejercer estos derechos directamente a través de las herramientas de la plataforma (editando su perfil, eliminando mascotas o retirando homenajes) o contactando a la administración del sistema. Al eliminar un registro, los archivos físicos correspondientes en los discos de almacenamiento son destruidos de inmediato.</p>
+
+          <h6 class="fw-bold text-dark">7. Modificaciones al Aviso de Privacidad</h6>
+          <p>Nos reservamos el derecho de efectuar en cualquier momento modificaciones o actualizaciones al presente aviso de privacidad para la atención de novedades legislativas o mejoras de seguridad en la plataforma. Las modificaciones estarán disponibles en esta misma sección.</p>
+        </div>
+        <div class="modal-footer border-top pt-3">
+          <button type="button" class="btn boton-acento px-4" data-bs-dismiss="modal">Entendido y Conforme</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: TÉRMINOS Y CONDICIONES DE SERVICIO -->
+  <div class="modal fade" id="modalTerminosCondiciones" tabindex="-1" aria-labelledby="tituloTerminosCondiciones" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+      <div class="modal-content tarjeta-suave border-0">
+        <div class="modal-header border-bottom pb-3">
+          <div class="d-flex align-items-center gap-2">
+            <div class="p-2 rounded-circle bg-primary bg-opacity-10 text-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M5 10.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/><path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2"/><path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1z"/></svg>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold text-dark mb-0" id="tituloTerminosCondiciones">Términos y Condiciones de Uso</h5>
+              <div class="text-muted small">Reglas de Convivencia y Uso de la Plataforma PetMap</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar modal"></button>
+        </div>
+        <div class="modal-body p-4 text-start small text-secondary" style="line-height: 1.7;">
+          <h6 class="fw-bold text-dark">1. Naturaleza y Aceptación del Servicio</h6>
+          <p>El uso del sitio web y de las herramientas proporcionadas por PetMap constituye la aceptación plena e incondicional de los presentes Términos y Condiciones. PetMap es una herramienta tecnológica libre y comunitaria cuyo propósito es asistir solidariamente en el reporte, búsqueda y reencuentro de mascotas extraviadas, así como proveer un espacio de homenaje conmemorativo.</p>
+
+          <h6 class="fw-bold text-dark">2. Gratuidad y Ausencia de Intermediación Monetaria</h6>
+          <p>La plataforma es 100% gratuita para la comunidad. PetMap no es una casa de empeño, aseguradora, servicio de investigación privada ni plataforma de intermediación financiera. En consecuencia:</p>
+          <ul>
+            <li>PetMap no solicita, cobra ni custodia dinero por recompensas, cuotas de recuperación o gastos de veterinaria.</li>
+            <li>Cualquier acuerdo económico, entrega de gratificaciones o recompensas pactadas entre particulares se realiza bajo el criterio y responsabilidad exclusiva de las partes involucradas.</li>
+          </ul>
+
+          <h6 class="fw-bold text-dark">3. Propiedad Intelectual y Contenido Aportado por el Usuario</h6>
+          <p>El usuario que suba fotografías, descripciones, nombres o dedicatorias declara y garantiza:</p>
+          <ul>
+            <li>Que es el legítimo propietario o cuenta con la debida autorización y titularidad de los derechos de autor para cargar y difundir dichas imágenes y contenidos.</li>
+            <li>Que no infringe derechos de propiedad intelectual, marcas ni derechos de privacidad de terceros.</li>
+            <li>Que otorga a PetMap una licencia no exclusiva, gratuita y limitada para almacenar, redimensionar, comprimir y mostrar las imágenes en la plataforma web, credenciales digitales y carteles de búsqueda.</li>
+          </ul>
+
+          <h6 class="fw-bold text-dark">4. Conducta Prohibida y Moderación de Contenido</h6>
+          <p>Queda terminantemente prohibido utilizar PetMap para:</p>
+          <ul>
+            <li>Subir imágenes que muestren a personas reconocibles sin su consentimiento expreso o que involucren a menores de edad.</li>
+            <li>Publicar contenido que constituya maltrato animal, violencia, crueldad, pornografía, difamación, fraude, extorsión o cualquier acto ilícito.</li>
+            <li>Generar reportes falsos o de broma que desvíen los esfuerzos comunitarios de rescate.</li>
+          </ul>
+          <p>Los administradores de PetMap se reservan el derecho irrestricto de dar de baja de forma inmediata, preventiva y sin previo aviso cualquier publicación, perfil, imagen o comentario que vulnere estas pautas o reciba reportes justificados de la comunidad.</p>
+
+          <h6 class="fw-bold text-dark">5. Cláusula de Indemnidad</h6>
+          <p>El usuario se compromete a defender, indemnizar y mantener libre de daños a PetMap, a sus desarrolladores, operadores, colaboradores y administradores respecto a cualquier reclamación, demanda, pleito judicial, sanción administrativa o gasto que se derive del uso indebido del servicio o de la infracción a derechos de terceros por parte del usuario.</p>
+        </div>
+        <div class="modal-footer border-top pt-3">
+          <button type="button" class="btn boton-acento px-4" data-bs-dismiss="modal">Aceptar Términos</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DESCARGO DE RESPONSABILIDAD -->
+  <div class="modal fade" id="modalDescargoLegal" tabindex="-1" aria-labelledby="tituloDescargoLegal" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+      <div class="modal-content tarjeta-suave border-0">
+        <div class="modal-header border-bottom pb-3">
+          <div class="d-flex align-items-center gap-2">
+            <div class="p-2 rounded-circle bg-warning bg-opacity-10 text-warning">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M5.338 1.59a61 61 0 0 0-2.837.856.48.48 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.7 10.7 0 0 0 2.287 2.233c.346.244.652.42.893.533q.18.085.293.134a.1.1 0 0 0 .101 0q.114-.049.293-.134c.241-.113.547-.29.893-.533a10.7 10.7 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.464 9.99-1.579 2.065-3.444 3.097-4.19 3.292a1 1 0 0 1-.41 0c-.746-.195-2.611-1.227-4.19-3.292-1.677-2.195-3.06-5.513-2.464-9.99A1.54 1.54 0 0 1 1.83 2.693c.658-.215 1.777-.57 2.887-.87z"/><path d="M7.001 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0M7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.553.553 0 0 1-1.1 0z"/></svg>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold text-dark mb-0" id="tituloDescargoLegal">Descargo Legal y Limitación de Responsabilidad</h5>
+              <div class="text-muted small">Exención de Responsabilidad Civil y Recomendaciones de Seguridad</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar modal"></button>
+        </div>
+        <div class="modal-body p-4 text-start small text-secondary" style="line-height: 1.7;">
+          <h6 class="fw-bold text-dark">1. Exención sobre el Éxito de la Búsqueda</h6>
+          <p>PetMap actúa exclusivamente como un canal tecnológico colaborativo para la difusión de reportes. En ningún caso PetMap garantiza la localización, rescate o recuperación efectiva de un animal extraviado, ni asume responsabilidad por la falta de avistamientos o por demoras imputables a conexiones de red, dispositivos o proveedores de geolocalización.</p>
+
+          <h6 class="fw-bold text-dark">2. Precaución en Encuentros Personales y Entregas Físicas</h6>
+          <p>Para salvaguardar la integridad de toda la comunidad, exhortamos vehementemente a seguir las siguientes recomendaciones al concretar el reencuentro de una mascota:</p>
+          <div class="p-3 bg-light border rounded-3 mb-3">
+            <ul class="mb-0 ps-3">
+              <li><strong>Lugares Públicos:</strong> Realice siempre las entregas en sitios públicos, abiertos y concurridos (ej. clínicas veterinarias reconocidas, plazas públicas, módulos de seguridad ciudadana).</li>
+              <li><strong>Horario Diurno:</strong> Procure llevar a cabo los encuentros a plena luz del día.</li>
+              <li><strong>Acompañamiento:</strong> Asista siempre acompañado de una o más personas de su confianza.</li>
+              <li><strong>Prevención Antifraude:</strong> Jamás realice depósitos, transferencias ni envíos de dinero por adelantado sin haber verificado físicamente la identidad y el estado de la mascota en un entorno seguro.</li>
+            </ul>
+          </div>
+
+          <h6 class="fw-bold text-dark">3. Integridad de los Datos Provistos por Terceros</h6>
+          <p>La información, fotografías y ubicaciones mostradas en el mapa y boletines son ingresadas por los propios usuarios. PetMap no realiza peritajes ni verifica documentalmente la propiedad jurídica de los animales registrados, por lo que no se hace responsable por disputas de custodia o propiedad entre particulares.</p>
+        </div>
+        <div class="modal-footer border-top pt-3">
+          <button type="button" class="btn boton-acento px-4" data-bs-dismiss="modal">Entendido</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: POLÍTICA DE COOKIES -->
+  <div class="modal fade" id="modalCookies" tabindex="-1" aria-labelledby="tituloModalCookies" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content tarjeta-suave border-0">
+        <div class="modal-header border-bottom pb-3">
+          <div class="d-flex align-items-center gap-2">
+            <div class="p-2 rounded-circle bg-info bg-opacity-10 text-info">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M6 7.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m4.5.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2m-.5 3.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/><path d="M8 0a7.96 7.96 0 0 0-4.075 1.114q-.245.102-.437.28A8 8 0 1 0 8 0m3.25 4c.11 0 .162-.087.124-.164A4 4 0 0 0 9.49 1.488a.2.2 0 0 1-.09-.23c.044-.132.18-.198.31-.148A5 5 0 0 1 12 3.5c0 .276-.224.5-.5.5zm1.5 3a.5.5 0 0 1 .5-.5 3 3 0 0 0 2.215-1.026.195.195 0 0 1 .28-.024c.097.086.106.23.023.328A4 4 0 0 1 13 7.5a.5.5 0 0 1-.5-.5"/></svg>
+            </div>
+            <div>
+              <h5 class="modal-title fw-bold text-dark mb-0" id="tituloModalCookies">Política de Cookies</h5>
+              <div class="text-muted small">Uso de Tecnologías de Almacenamiento Local</div>
+            </div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar modal"></button>
+        </div>
+        <div class="modal-body p-4 text-start small text-secondary" style="line-height: 1.7;">
+          <p>En PetMap respetamos tu privacidad al máximo. Por ello, <strong>no utilizamos cookies de rastreo comercial, píxeles de seguimiento ni publicidad dirigida de terceros</strong>.</p>
+          <h6 class="fw-bold text-dark">¿Qué cookies y almacenamientos utilizamos?</h6>
+          <ul>
+            <li><strong>Cookie de Sesión Segura (<code>petmap_token</code>):</strong> Almacena tu token de autenticación JWT de manera cifrada con atributos de máxima seguridad (<code>HttpOnly</code>, <code>SameSite=Lax</code> y <code>Secure</code> en producción). Su único propósito es mantenerte conectado de forma segura.</li>
+            <li><strong>Almacenamiento Local (<code>localStorage</code>):</strong> Guarda únicamente tus preferencias de interfaz, tales como la aceptación del aviso de cookies y la última plantilla de credencial seleccionada, sin contener datos personales sensibles.</li>
+          </ul>
+          <p class="mb-0">Puedes limpiar o deshabilitar las cookies desde la configuración de tu navegador en cualquier momento; ten en cuenta que deshabilitar cookies técnicas impedirá mantener activa tu sesión de usuario.</p>
+        </div>
+        <div class="modal-footer border-top pt-3">
+          <button type="button" class="btn boton-acento px-4" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="iconos.js?v=1"></script>
-  <script src="mapa.js?v=13"></script>
-  <script src="app.js?v=13"></script>
+  <script src="mapa.js?v=14"></script>
+  <script src="app.js?v=14"></script>
   <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
