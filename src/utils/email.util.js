@@ -12,22 +12,33 @@ const obtenerTransportador = () => {
   const port = Number(process.env.SMTP_PORT || 587);
   const secure = process.env.SMTP_SECURE === 'true' || port === 465;
 
-  if (!host || !user || !pass) {
+  if (!user || !pass) {
     return null;
   }
 
-  transportador = nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: { user, pass },
-    tls: {
-      rejectUnauthorized: process.env.NODE_ENV === 'production'
-    },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000
-  });
+  // Soporte directo para servicio 'gmail' o servidor SMTP genérico
+  if (process.env.SMTP_SERVICE === 'gmail' || host === 'smtp.gmail.com') {
+    transportador = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass },
+      connectionTimeout: 10000
+    });
+  } else if (host) {
+    transportador = nodemailer.createTransport({
+      host,
+      port,
+      secure,
+      auth: { user, pass },
+      tls: {
+        rejectUnauthorized: process.env.NODE_ENV === 'production'
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000
+    });
+  } else {
+    return null;
+  }
 
   return transportador;
 };
@@ -105,4 +116,17 @@ const enviarCorreoRecuperacion = async ({ destinatario, nombreUsuario, enlaceRec
   }
 };
 
-module.exports = { enviarCorreoRecuperacion };
+const verificarConexionEmail = async () => {
+  const trans = obtenerTransportador();
+  if (!trans) {
+    return { ok: false, error: 'Variables SMTP no definidas en el archivo .env.' };
+  }
+  try {
+    await trans.verify();
+    return { ok: true, mensaje: 'Conexión SMTP con Gmail verificada y lista.' };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+};
+
+module.exports = { enviarCorreoRecuperacion, verificarConexionEmail };
