@@ -12,13 +12,38 @@
   --dorado: #ffd700;
 }
 
-html, body {
-  min-height: 100%;
+html {
+  height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
   background: radial-gradient(circle at top left, rgba(142, 201, 193, 0.18), transparent 26%),
               radial-gradient(circle at top right, rgba(149, 189, 230, 0.18), transparent 22%), var(--fondo);
   color: var(--texto);
   font-family: system-ui, -apple-system, sans-serif;
   scroll-behavior: smooth;
+}
+
+main {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#vista-inicio.activa {
+  flex: 1 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+}
+
+footer {
+  margin-top: auto !important;
 }
 
 *:focus-visible { outline: 3px solid var(--acento) !important; outline-offset: 2px !important; box-shadow: none !important; }
