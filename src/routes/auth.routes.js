@@ -25,8 +25,16 @@ const limiteRecuperacion = rateLimit({
   message: { mensaje: 'Demasiados intentos de recuperación de contraseña.' }
 });
 
+const limiteRegistro = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  limit: 10, // Máximo 10 registros por IP por hora
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { mensaje: 'Demasiados registros desde esta dirección. Por seguridad, intenta nuevamente más tarde.' }
+});
+
 rutasAuth.post('/login', limiteIntentosLogin, iniciarSesion);
-rutasAuth.post('/registro', registrarUsuario);
+rutasAuth.post('/registro', limiteRegistro, registrarUsuario);
 rutasAuth.post('/logout', cerrarSesion);
 rutasAuth.get('/me', verificarToken, obtenerSesionActual);
 rutasAuth.post('/recuperar', limiteRecuperacion, solicitarRecuperacion);

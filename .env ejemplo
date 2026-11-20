@@ -39,3 +39,14 @@ UPLOAD_DIR=./uploads
 
 # Llave de cifrado AES-256 (Generada para producción - 64 caracteres hex)
 ENCRYPTION_KEY=
+
+# ==========================================
+# SERVICIO DE CORREO SMTP (RECUPERACIÓN DE CONTRASEÑA)
+# ==========================================
+# Configura tu proveedor (Gmail, Resend, Brevo, SendGrid, etc.)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=tu_correo@gmail.com
+SMTP_PASS=tu_password_de_aplicacion
+SMTP_FROM="PetMap Soporte <tu_correo@gmail.com>"

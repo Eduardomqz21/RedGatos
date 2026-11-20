@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { consultarBd } = require('../config/bd.config');
+const { enviarCorreoRecuperacion } = require('../utils/email.util');
 
 const esCorreoValido = (correo) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
 const expContrasena = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -103,16 +104,18 @@ const solicitarRecuperacion = async (req, res) => {
     const tokenHash = crypto.createHash('sha256').update(tokenPlano).digest('hex');
     const expiracion = new Date(Date.now() + 3600000); // 1 hora
 
-    const resultado = await consultarBd(`UPDATE usuarios SET token_recuperacion = $1, expiracion_recuperacion = $2 WHERE correo = $3 RETURNING id;`, [tokenHash, expiracion, correo]);
+    const resultado = await consultarBd(`UPDATE usuarios SET token_recuperacion = $1, expiracion_recuperacion = $2 WHERE correo = $3 RETURNING id, nombre;`, [tokenHash, expiracion, correo]);
     
     if (resultado.rowCount > 0) {
-      // Como no hay servicio de emails configurado en backend, imprimimos la ruta completa en consola para que puedas testear.
-      const urlFrontend = req.headers['x-forwarded-proto'] || req.protocol;
+      const protocolo = req.headers['x-forwarded-proto'] || req.protocol;
       const hostFrontend = req.get('host');
-      console.log(`\n===========================================`);
-      console.log(`[TEST MODO LOCAL] ENLACE DE RECUPERACIÓN:`);
-      console.log(`${urlFrontend}://${hostFrontend}/?token=${tokenPlano}`);
-      console.log(`===========================================\n`);
+      const enlaceRecuperacion = `${protocolo}://${hostFrontend}/?token=${tokenPlano}`;
+
+      await enviarCorreoRecuperacion({
+        destinatario: correo,
+        nombreUsuario: resultado.rows[0].nombre,
+        enlaceRecuperacion
+      });
     }
 
     res.status(200).json({ mensaje: 'Si el correo existe, se enviaron las instrucciones.' });
