@@ -10,8 +10,7 @@ const { pool } = require('./src/config/bd.config');
     // 1. Cambiamos el comportamiento por defecto de la tabla
     await pool.query("ALTER TABLE usuarios ALTER COLUMN rol SET DEFAULT 'usuario';");
     
-    // 2. Degradamos a 'usuario' todas las cuentas que se crearon como 'admin' por error.
-    // (Tu cuenta superadmin está protegida porque su rol es 'superadmin', no 'admin').
+    // 2. Normalización de roles estándar de usuario
     const resultado = await pool.query("UPDATE usuarios SET rol = 'usuario' WHERE rol = 'admin';");
     
     console.log(`✅ ¡Parche exitoso! Se degradaron ${resultado.rowCount} cuentas a usuario normal.`);

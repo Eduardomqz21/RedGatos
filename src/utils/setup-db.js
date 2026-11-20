@@ -35,7 +35,7 @@ const inicializarBaseDeDatos = async () => {
       );
     `);
 
-    // 🔥 SOLUCIÓN CRÍTICA: Convierte las columnas existentes a TEXT si antes eran VARCHAR
+    // Normalizar columnas de contacto a formato TEXT
     try {
       await pool.query(`ALTER TABLE mascotas ALTER COLUMN telefono_dueno TYPE TEXT;`);
       await pool.query(`ALTER TABLE mascotas ALTER COLUMN direccion_dueno TYPE TEXT;`);
@@ -56,7 +56,7 @@ const inicializarBaseDeDatos = async () => {
 
     await pool.query(`CREATE TABLE IF NOT EXISTS tokens_bloqueados (token TEXT PRIMARY KEY, creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`);
 
-    const passAdmin = process.env.ADMIN_PASSWORD || 'admin123';
+    const passAdmin = process.env.ADMIN_PASSWORD || 'AdminPetmap!2026';
     const emailAdmin = process.env.ADMIN_EMAIL || 'admin@petmap.com';
     const hashAdmin = await bcrypt.hash(passAdmin, 10);
     await pool.query(`INSERT INTO usuarios (correo, contrasena_hash, rol, nombre) VALUES ($1, $2, 'superadmin', 'Super Admin') ON CONFLICT (correo) DO NOTHING;`, [emailAdmin, hashAdmin]);

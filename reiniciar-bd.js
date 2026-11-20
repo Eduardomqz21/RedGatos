@@ -105,13 +105,13 @@ const pool = new Pool({
 
     // 8. Insertar superadmin por defecto
     const emailAdmin = process.env.ADMIN_EMAIL || 'admin@petmap.com';
-    const passAdmin = process.env.ADMIN_PASSWORD || 'Admin123!';
+    const passAdmin = process.env.ADMIN_PASSWORD || 'AdminPetmap!2026';
     const hashAdmin = await bcrypt.hash(passAdmin, 10);
     await pool.query(
       `INSERT INTO usuarios (correo, contrasena_hash, rol, nombre) VALUES ($1, $2, 'superadmin', 'Super Admin') ON CONFLICT (correo) DO NOTHING;`,
       [emailAdmin, hashAdmin]
     );
-    console.log(`👤 Superadmin creado: ${emailAdmin} / ${passAdmin}`);
+    console.log(`👤 Superadmin configurado: ${emailAdmin}`);
 
     console.log('\n🎉 ¡Base de datos reiniciada con éxito!');
     console.log('   Ahora puedes iniciar sesión con las credenciales anteriores y registrar mascotas sin problemas.');

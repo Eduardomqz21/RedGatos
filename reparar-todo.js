@@ -160,8 +160,8 @@ const insertarMascota = async (datos) => {
     console.log('   ✔ Índices listos.');
 
     // ─── 5. SUPERADMIN ─────────────────────────────────────────
-    const emailAdmin = process.env.ADMIN_EMAIL || 'adminpetmap@gmail.com';
-    const passAdmin = process.env.ADMIN_PASSWORD || 'Pelismaxpalomita1!';
+    const emailAdmin = process.env.ADMIN_EMAIL || 'admin@petmap.com';
+    const passAdmin = process.env.ADMIN_PASSWORD || 'AdminPetmap!2026';
     const hashAdmin = await bcrypt.hash(passAdmin, 10);
     await pool.query(
       `INSERT INTO usuarios (correo, contrasena_hash, rol, nombre) VALUES ($1, $2, 'superadmin', 'Super Admin') ON CONFLICT (correo) DO NOTHING;`,

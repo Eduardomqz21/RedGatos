@@ -80,7 +80,7 @@ aplicacion.use(express.static(path.join(__dirname, 'public'), {
   }
 }));
 
-// ¡¡NUEVA LÍNEA!! PARA SERVIR LA CARPETA TEMPLATES QUE ESTÁ AFUERA DE PUBLIC
+// Servir plantillas estáticas de credenciales y carteles
 aplicacion.use('/templates', express.static(path.join(__dirname, 'templates')));
 
 // Servir uploads de Memorial (Altar) desde su disco dedicado
